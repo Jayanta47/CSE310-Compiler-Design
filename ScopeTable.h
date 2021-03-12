@@ -59,7 +59,6 @@ ScopeTable::ScopeTable(int n_buckets, int id)
     this->buildBucket();
     this->parentScope = nullptr;
     this->idString = patch::to_string(id);
-    std::cout<<"Done"<<std::endl;
 }
 
 ScopeTable::ScopeTable(int n_buckets, int id, ScopeTable *parentScope)
@@ -74,16 +73,18 @@ ScopeTable::ScopeTable(int n_buckets, int id, ScopeTable *parentScope)
 
 void ScopeTable::buildBucket()
 {
-    if (this->n_buckets == 0 || this->bucket == nullptr)
+    if (this->n_buckets == 0)
     {
         return;
     }
 
     this->bucket = new symbolInfo*[this->n_buckets];
-    for (int i; i < this->n_buckets; i++)
+    for (int i = 0; i < this->n_buckets; i++)
     {
         this->bucket[i] = nullptr;
     }
+    // cout<<"Allocation done"<<endl;
+
 }
 
 void ScopeTable::setParentScope(ScopeTable *parentScope)
@@ -103,6 +104,7 @@ void ScopeTable::collectID()
     while(scopeTablePtr != nullptr)
     {
         idTemp = patch::to_string(scopeTablePtr->id) + "." + idTemp;
+        scopeTablePtr = scopeTablePtr->parentScope;
     }
 
     this->idString = idTemp;
@@ -122,7 +124,7 @@ int ScopeTable::hashIndex(std::string Name)
 
 bool ScopeTable::Insert(symbolInfo *item)
 {
-    std::cout<<"Hello\n";
+    std::cout<<"Hello start\n";
     if (this->LookUp(item->getName(), false) != nullptr)
     {
         std::cout<<"<"<<item->getName()<<", "<<item->getType()<<"> already exists in current ScopeTable"<<std::endl;
@@ -174,7 +176,6 @@ bool ScopeTable::Insert(symbolInfo *item)
 
 bool ScopeTable::Insert(std::string Name, std::string Type)
 {
-    std::cout<<"Hello\n";
     if (this->LookUp(Name, false) != nullptr)
     {
         std::cout<<"<"<<Name<<", "<<Type<<"> already exists in current ScopeTable"<<std::endl;
@@ -238,7 +239,7 @@ symbolInfo *ScopeTable::LookUp(std::string Name, bool showLoc)
             if(showLoc)
             {
                 std::cout<<"Found in ScopeTable# "<<this->idString
-                <<"at position "<<index<<", "<<pos<<std::endl;
+                <<" at position "<<index<<", "<<pos<<std::endl;
                 this->index = index;
                 this->pos = pos;
             }
@@ -249,7 +250,7 @@ symbolInfo *ScopeTable::LookUp(std::string Name, bool showLoc)
 
     }
 
-    std::cout<<"Not found"<<std::endl;
+    if (showLoc) std::cout<<"Not found"<<std::endl;
     return nullptr;
 }
 
@@ -266,6 +267,11 @@ bool ScopeTable::Delete(std::string Name)
     {
         delItem->getPrev()->setNext(delItem->getNext());
     }
+    else
+    {
+        this->bucket[index] = delItem->getNext();
+    }
+
     if (delItem->getNext() != nullptr)
     {
         delItem->getNext()->setPrev(delItem->getPrev());
@@ -282,17 +288,18 @@ void ScopeTable::Print()
     std::cout<<"ScopeTable # "<<this->idString<<"\n";
     for (int i = 0; i < this->n_buckets; i++)
     {
-        std::cout<<i<<" -->";
+        std::cout<<i<<" --> ";
         if (this->bucket[i] != nullptr)
         {
             symbolInfo *temp = this->bucket[i];
             while(temp != nullptr)
             {
-                temp->_str();
-                std::cout<<" ";
+                std::cout<<temp->_str()<<" ";
+                //std::cout<<" ha";
                 temp = temp->getNext();
             }
         }
+        std::cout<<"\n";
 
     }
 }

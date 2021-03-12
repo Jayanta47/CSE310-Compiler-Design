@@ -26,11 +26,28 @@ int main()
     //     int b = a[i];
     //     cout<<b<<endl;
     // }
-    cout<<"Hello World"<<endl;
     ScopeTable *sch = new ScopeTable(6, 1);
     sch->Print();
-    cout<<"Hello World"<<endl;
-    //sch->Print();
+    bool state = sch->Insert("ab", "Integer");
+    sch->Insert("b", "Integer");
+    sch->Insert("c", "Integer");
+    sch->Insert("lkk", "Integer");
+    sch->Insert("erd", "Integer");
+    sch->Delete("c");
+
+    sch->Print();
+
+    ScopeTable *sch2 = new ScopeTable(6, 1, sch);
+    sch2->Insert("ab", "String");
+
+
+    
+
+    sch2->Print();
+
+    delete sch2;
+
+    sch->Print();
 
     return 0;
 
