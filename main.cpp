@@ -40,16 +40,17 @@ void IOparser(string inputFileName, string outputFileName="output.txt")
     
 
     ifstream infile(inputFileName);
-    ofstream outfile(outputFileName);
+    ofstream *outfile = new ofstream(outputFileName);
     string Command; int value; string line;
 
     if (infile.is_open())
     {
         std::getline(infile, line);
         int n_bucket = stringToIntConverter(line);
-        SymbolTable * ST = new SymbolTable(n_bucket);
+        SymbolTable * ST = new SymbolTable(n_bucket, outfile);
         while (std::getline(infile, line))
         {
+            (*outfile)<<line<<"\n\n";
             vector<string> split_v;
             split(line, split_v);
             Command = split_v[0];
@@ -61,14 +62,16 @@ void IOparser(string inputFileName, string outputFileName="output.txt")
             {
                 if(ST->LookUp(split_v[1]) == nullptr)
                 {
-                    cout<<"Not Found\n\n";
+                    cout<<"Not Found " + split_v[1] + "\n\n";
+                    (*outfile)<<"Not Found " + split_v[1] + "\n\n";
                 }
             }
             else if (Command == "D")
             {
-                if(ST->Delete(split_v[1]))
+                if(!ST->Remove(split_v[1]))
                 {
-                    cout<<"Not Found\n\n";
+                    cout<<"Not Found " + split_v[1] + "\n\n";
+                    (*outfile)<<"Not Found " + split_v[1] + "\n\n";
                 }
             }
             else if (Command == "P")
@@ -108,7 +111,7 @@ void IOparser(string inputFileName, string outputFileName="output.txt")
         cout<<"Output written to File Successfully."<<endl;
     }
     cout<<"\n-------------------------------------------------------------"<<endl;
-    outfile.close();
+    outfile->close();
 }
 
 int main()

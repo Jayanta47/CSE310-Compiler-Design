@@ -9,32 +9,51 @@ private:
     ScopeTable *currScopeTable;
     ScopeTable *tempPtr;
 
+    std::ofstream *fileWriter;
+    bool writeToFile;
+
 public:
-    SymbolTable(int N);
+    SymbolTable(int N, std::ofstream *ptr = nullptr);
 
     void EnterScope();
     void ExitScope();
     bool Insert(std::string Name, std::string Type);
     bool Insert(symbolInfo *item);
-    bool Delete(std::string Name);
+    bool Remove(std::string Name);
     symbolInfo *LookUp(std::string Name);
     void printCurrentScopeTable();
     void printAllScopeTable();
 
+    void setFileWriter(std::ofstream *ptr);
+    void writeInFile(std::string Msg);
+
     ~SymbolTable();
 };
 
-SymbolTable::SymbolTable(int N)
+SymbolTable::SymbolTable(int N, std::ofstream *ptr)
 {
     this->def_bucket_size = N;
-    this->currScopeTable = new ScopeTable(this->def_bucket_size, 1);
     this->tempPtr = nullptr;
+    this->fileWriter = ptr;
+    if (ptr != nullptr) this->writeToFile = true;
+    this->currScopeTable = new ScopeTable(this->def_bucket_size, 1, this->fileWriter);
+}
+
+void SymbolTable::setFileWriter(std::ofstream *ptr)
+{
+    this->writeToFile = true;
+    this->fileWriter = ptr;
+}
+
+void SymbolTable::writeInFile(std::string Msg)
+{
+    (*this->fileWriter)<<Msg<<"\n\n";
 }
 
 void SymbolTable::EnterScope()
 {
     this->tempPtr = new ScopeTable(this->def_bucket_size,this->currScopeTable->getNextScopeNum(),
-                                    this->currScopeTable);
+                                    this->currScopeTable, this->fileWriter);
     this->currScopeTable = this->tempPtr;
     this->tempPtr = nullptr;
 }
@@ -44,6 +63,10 @@ void SymbolTable::ExitScope()
     if (this->currScopeTable->getParentScope() == nullptr)
     {
         std::cout<<"Cannot Exit Global Scope Table\n";
+        if (this->writeToFile)
+        {
+            this->writeInFile("Cannot Exit Global Scope Table");
+        }
     }
 
     this->tempPtr = this->currScopeTable;
@@ -61,7 +84,7 @@ bool SymbolTable::Insert(symbolInfo *item)
     return this->currScopeTable->Insert(item);
 }
 
-bool SymbolTable::Delete(std::string Name)
+bool SymbolTable::Remove(std::string Name)
 {
     return this->currScopeTable->Delete(Name);
 }
