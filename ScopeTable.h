@@ -30,7 +30,10 @@ public:
     ScopeTable(int n_buckets, int id);
     ScopeTable(int n_buckets, int id, ScopeTable *parentScope);
 
+    void creationMsg();
     void setParentScope(ScopeTable *parentScope);
+    ScopeTable *getParentScope();
+    int getNextScopeNum();
 
     bool Insert(symbolInfo *item);
     bool Insert(std::string Name, std::string Type);
@@ -69,6 +72,12 @@ ScopeTable::ScopeTable(int n_buckets, int id, ScopeTable *parentScope)
     this->buildBucket();
     this->setParentScope(parentScope);
     this->collectID();
+    this->creationMsg();
+}
+
+void ScopeTable::creationMsg()
+{
+    std::cout<<"New ScopeTable with id "<<this->idString<<" created\n";
 }
 
 void ScopeTable::buildBucket()
@@ -92,6 +101,11 @@ void ScopeTable::setParentScope(ScopeTable *parentScope)
     this->parentScope = parentScope;
 }
 
+ScopeTable *ScopeTable::getParentScope()
+{
+    return this->parentScope;
+}
+
 void ScopeTable::collectID()
 {
     if (this->parentScope == nullptr)
@@ -111,6 +125,12 @@ void ScopeTable::collectID()
 
 }
 
+int ScopeTable::getNextScopeNum()
+{
+    scopes_ctr++;
+    return scopes_ctr;
+}
+
 int ScopeTable::hashIndex(std::string Name)
 {
     int hash_index = 0;
@@ -124,7 +144,7 @@ int ScopeTable::hashIndex(std::string Name)
 
 bool ScopeTable::Insert(symbolInfo *item)
 {
-    std::cout<<"Hello start\n";
+    // std::cout<<"Hello start\n";
     if (this->LookUp(item->getName(), false) != nullptr)
     {
         std::cout<<"<"<<item->getName()<<", "<<item->getType()<<"> already exists in current ScopeTable"<<std::endl;
@@ -220,7 +240,7 @@ bool ScopeTable::Insert(std::string Name, std::string Type)
     }
 
     std::cout<<"Inserted in ScopeTable# "<<this->idString
-        <<" at position "<<index<<" ,"<<pos<<std::endl;
+        <<" at position "<<index<<" ,"<<pos+1<<std::endl;
 
     return true;
 
@@ -250,7 +270,7 @@ symbolInfo *ScopeTable::LookUp(std::string Name, bool showLoc)
 
     }
 
-    if (showLoc) std::cout<<"Not found"<<std::endl;
+    //if (showLoc) std::cout<<"Not found"<<std::endl; // handle this outside the class
     return nullptr;
 }
 
