@@ -139,15 +139,8 @@ void ScopeTable::collectID()
         return;
     }
 
-    ScopeTable *scopeTablePtr = this->parentScope;
-    std::string idTemp = patch::to_string(this->id);
-    while(scopeTablePtr != nullptr)
-    {
-        idTemp = patch::to_string(scopeTablePtr->id) + "." + idTemp;
-        scopeTablePtr = scopeTablePtr->parentScope;
-    }
-
-    this->idString = idTemp;
+    this->idString = this->parentScope->idString + "." +
+                         patch::to_string(this->id);
 
 }
 
@@ -259,7 +252,7 @@ symbolInfo *ScopeTable::LookUp(std::string Name, bool showLoc)
         if (symPtr->equalsName(Name))
         {
             std::string Msg = "Found in ScopeTable# " + this->idString + " at position "
-                                + patch::to_string(index) + " ," + patch::to_string(pos);
+                                + patch::to_string(index) + ", " + patch::to_string(pos);
             this->index = index;
             this->pos = pos;
             if(showLoc)

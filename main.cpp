@@ -51,6 +51,7 @@ void IOparser(string inputFileName, string outputFileName="output.txt")
         while (std::getline(infile, line))
         {
             (*outfile)<<line<<"\n\n";
+            std::cout<<line<<"\n\n";
             vector<string> split_v;
             split(line, split_v);
             Command = split_v[0];
@@ -62,16 +63,16 @@ void IOparser(string inputFileName, string outputFileName="output.txt")
             {
                 if(ST->LookUp(split_v[1]) == nullptr)
                 {
-                    cout<<"Not Found " + split_v[1] + "\n\n";
-                    (*outfile)<<"Not Found " + split_v[1] + "\n\n";
+                    cout<<split_v[1] + " Not Found " + "\n\n";
+                    (*outfile)<<split_v[1] + " Not Found " + "\n\n";
                 }
             }
             else if (Command == "D")
             {
                 if(!ST->Remove(split_v[1]))
                 {
-                    cout<<"Not Found " + split_v[1] + "\n\n";
-                    (*outfile)<<"Not Found " + split_v[1] + "\n\n";
+                    cout<<split_v[1] + " Not Found " + "\n\n";
+                    (*outfile)<<split_v[1] + " Not Found " + "\n\n";
                 }
             }
             else if (Command == "P")
@@ -106,11 +107,11 @@ void IOparser(string inputFileName, string outputFileName="output.txt")
 
     }
     infile.close();
+    cout<<"\n-------------------------------------------------------------"<<endl;
     if (writeToFile)
     {
         cout<<"Output written to File Successfully."<<endl;
     }
-    cout<<"\n-------------------------------------------------------------"<<endl;
     outfile->close();
 }
 
@@ -166,7 +167,13 @@ int main()
 
     // sch->Print();
 
-    IOparser("input.txt");
+    IOparser("input0.txt", "output_0.txt");
+    IOparser("input1.txt", "output_1.txt");
+    IOparser("input2.txt", "output_2.txt");
+    IOparser("input3.txt", "output_3.txt");
+    IOparser("input4.txt", "output_4.txt");
+    IOparser("input5.txt", "output_5.txt");
+
 
     return 0;
 
