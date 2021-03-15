@@ -118,7 +118,6 @@ void ScopeTable::buildBucket()
     {
         this->bucket[i] = nullptr;
     }
-    // cout<<"Allocation done"<<endl;
 
 }
 
@@ -268,7 +267,6 @@ symbolInfo *ScopeTable::LookUp(std::string Name, bool showLoc)
 
     }
 
-    //if (showLoc) std::cout<<"Not found"<<std::endl; // handle this outside the class
     return nullptr;
 }
 

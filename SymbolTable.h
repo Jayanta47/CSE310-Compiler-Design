@@ -105,7 +105,7 @@ symbolInfo *SymbolTable::LookUp(std::string Name)
             this->tempPtr = this->tempPtr->getParentScope();
         }
     }
-    //std::cout<<"Not Found\n";
+
     return nullptr;
 }
 
@@ -128,7 +128,6 @@ void SymbolTable::printAllScopeTable()
 
 SymbolTable::~SymbolTable()
 {
-    //std::cout<<"Destroying Symbol Table\n";
     this->tempPtr = nullptr;
     this->currScopeTable = nullptr;
 }

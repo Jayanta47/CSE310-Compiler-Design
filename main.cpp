@@ -117,14 +117,8 @@ void IOparser(string inputFileName, string outputFileName="output.txt")
 
 int main()
 {
-    IOparser("input0.txt", "output_0.txt");
-    IOparser("input1.txt", "output_1.txt");
-    IOparser("input2.txt", "output_2.txt");
-    IOparser("input3.txt", "output_3.txt");
-    IOparser("input4.txt", "output_4.txt");
-    IOparser("input5.txt", "output_5.txt");
-
-
+    IOparser("input.txt");
+    
     return 0;
 
 }
