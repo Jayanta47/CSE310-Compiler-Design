@@ -128,7 +128,7 @@ void SymbolTable::printAllScopeTable()
 
 SymbolTable::~SymbolTable()
 {
-    std::cout<<"Destroying Symbol Table\n";
+    //std::cout<<"Destroying Symbol Table\n";
     this->tempPtr = nullptr;
     this->currScopeTable = nullptr;
 }
