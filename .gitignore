@@ -1,16 +1,17 @@
-input0.txt
-input1.txt
-input2.txt
-input3.txt
-input4.txt
-input5.txt
-input.txt
-output.txt
-output_0.txt
-output_1.txt
-output_2.txt
-output_3.txt
-output_4.txt
-output_5.txt
-Test_Output/*
-main.exe
+"Symbol Table"/input0.txt
+"Symbol Table"/input1.txt
+"Symbol Table"/input2.txt
+"Symbol Table"/input3.txt
+"Symbol Table"/input4.txt
+"Symbol Table"/input5.txt
+"Symbol Table"/input.txt
+"Symbol Table"/output.txt
+"Symbol Table"/output_0.txt
+"Symbol Table"/output_1.txt
+"Symbol Table"/output_2.txt
+"Symbol Table"/output_3.txt
+"Symbol Table"/output_4.txt
+"Symbol Table"/output_5.txt
+"Symbol Table"/Test_Output/*
+"Symbol Table"/main.exe
+"Symbol Table"/.vscode
