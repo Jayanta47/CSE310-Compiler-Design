@@ -1,7 +1,7 @@
 #ifndef SYMBOL_TABLE_H
 
 #include "ScopeTable.h"
-
+#include <fstream>
 class SymbolTable
 {
 private:
@@ -14,6 +14,7 @@ private:
 
 public:
     SymbolTable(int N, std::ofstream *ptr = nullptr);
+    SymbolTable(int N, std::string filename);
 
     void EnterScope();
     void ExitScope();
@@ -36,6 +37,15 @@ SymbolTable::SymbolTable(int N, std::ofstream *ptr)
     this->tempPtr = nullptr;
     this->fileWriter = ptr;
     if (ptr != nullptr) this->writeToFile = true;
+    this->currScopeTable = new ScopeTable(this->def_bucket_size, 1, this->fileWriter);
+}
+
+SymbolTable::SymbolTable(int N, std::string filename = "output.txt")
+{
+    this->def_bucket_size = N;
+    this->tempPtr = nullptr;
+    this->writeToFile = true;
+    this->fileWriter = new std::ofstream(filename); 
     this->currScopeTable = new ScopeTable(this->def_bucket_size, 1, this->fileWriter);
 }
 
