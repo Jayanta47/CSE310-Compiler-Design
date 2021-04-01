@@ -1,6 +1,5 @@
-#line 2 "lexer.cpp"
 
-#line 4 "lexer.cpp"
+#line 3 "lex.yy.c"
 
 #define  YY_INT_ALIGNED short int
 
@@ -163,27 +162,8 @@ extern FILE *yyin, *yyout;
 #define EOB_ACT_END_OF_FILE 1
 #define EOB_ACT_LAST_MATCH 2
     
-    /* Note: We specifically omit the test for yy_rule_can_match_eol because it requires
-     *       access to the local variable yy_act. Since yyless() is a macro, it would break
-     *       existing scanners that call yyless() from OUTSIDE yylex.
-     *       One obvious solution it to make yy_act a global. I tried that, and saw
-     *       a 5% performance hit in a non-yylineno scanner, because yy_act is
-     *       normally declared as a register variable-- so it is not worth it.
-     */
-    #define  YY_LESS_LINENO(n) \
-            do { \
-                int yyl;\
-                for ( yyl = n; yyl < yyleng; ++yyl )\
-                    if ( yytext[yyl] == '\n' )\
-                        --yylineno;\
-            }while(0)
-    #define YY_LINENO_REWIND_TO(dst) \
-            do {\
-                const char *p;\
-                for ( p = yy_cp-1; p >= (dst); --p)\
-                    if ( *p == '\n' )\
-                        --yylineno;\
-            }while(0)
+    #define YY_LESS_LINENO(n)
+    #define YY_LINENO_REWIND_TO(ptr)
     
 /* Return all but the first "n" matched characters back to the input stream. */
 #define yyless(n) \
@@ -374,8 +354,8 @@ static void yynoreturn yy_fatal_error ( const char* msg  );
 	(yy_hold_char) = *yy_cp; \
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
-#define YY_NUM_RULES 52
-#define YY_END_OF_BUFFER 53
+#define YY_NUM_RULES 4
+#define YY_END_OF_BUFFER 5
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -383,46 +363,28 @@ struct yy_trans_info
 	flex_int32_t yy_verify;
 	flex_int32_t yy_nxt;
 	};
-static const flex_int16_t yy_accept[186] =
+static const flex_int16_t yy_accept[16] =
     {   0,
-        0,    0,    3,    3,    6,    6,   53,   52,   51,   50,
-       37,   49,   33,   52,   46,   23,   24,   32,   29,   32,
-       52,   33,   38,   30,   34,   36,   34,   41,   27,   28,
-       41,   41,   41,   41,   41,   41,   41,   41,   41,   41,
-       25,   52,   26,    3,   52,    6,    5,    6,   51,   34,
-       49,   49,   42,   49,   49,   35,    0,   46,   46,   48,
-        0,   31,   43,   39,    1,    4,    0,   38,   44,   44,
-       44,   41,   41,   41,   41,   41,   41,   11,   41,   41,
-       41,    7,   41,   41,   41,   41,   41,    3,    0,    2,
-        6,    6,   49,   49,   42,   49,   49,   42,   49,   49,
-
-        0,    0,   49,   49,   49,   42,   46,   46,   40,    0,
-       40,   46,   43,    0,    0,    0,    0,   44,   44,   41,
-       41,   41,   41,   41,   41,   41,   41,    9,   13,   41,
-       41,   41,   41,   42,   42,   49,    0,    0,    0,   47,
-       47,   45,    0,   45,   44,    0,   39,   41,   20,   14,
-       41,   41,   41,    8,   41,   41,   41,   17,   41,    0,
-        0,    0,   39,   44,   12,   41,   41,   41,   15,   41,
-       41,   10,    0,    0,   44,   41,   41,   16,   18,   19,
-       45,   41,   21,   22,    0
+        0,    0,    0,    0,    5,    4,    4,    3,    3,    4,
+        1,    3,    3,    2,    0
     } ;
 
 static const YY_CHAR yy_ec[256] =
     {   0,
-        1,    1,    1,    1,    1,    1,    1,    1,    2,    3,
-        2,    2,    2,    1,    1,    1,    1,    1,    1,    1,
+        1,    1,    1,    1,    1,    1,    1,    1,    1,    2,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
-        1,    4,    5,    6,    7,    7,    8,    9,   10,   11,
-       12,   13,   14,   15,   16,   17,   18,   19,   20,   20,
-       20,   20,   20,   20,   20,   20,   20,    7,   21,   22,
-       23,   24,    7,    7,   25,   25,   25,   25,   26,   25,
-       25,   25,   27,   25,   25,   27,   25,   27,   25,   25,
-       25,   25,   25,   25,   25,   25,   27,   25,   25,   25,
-       28,   29,   30,    7,   25,    7,   31,   32,   33,   34,
+        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+        1,    1,    1,    1,    1,    1,    1,    1,    1,    3,
+        3,    4,    1,    1,    1,    1,    5,    1,    1,    1,
+        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
 
-       35,   36,   25,   37,   38,   25,   39,   40,   25,   41,
-       42,   25,   25,   43,   44,   45,   46,   47,   48,   25,
-       25,   25,   49,   50,   51,    7,    1,    1,    1,    1,
+        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
@@ -439,210 +401,36 @@ static const YY_CHAR yy_ec[256] =
         1,    1,    1,    1,    1
     } ;
 
-static const YY_CHAR yy_meta[52] =
+static const YY_CHAR yy_meta[6] =
     {   0,
-        1,    2,    3,    4,    4,    5,    4,    4,    4,    6,
-        4,    4,    4,    4,    4,    4,    7,    4,    8,    9,
-        4,    4,    4,    4,    9,   10,   10,    4,    6,    4,
-        8,    8,    9,    9,    9,    8,    9,    9,    9,    9,
-        8,    9,    8,    9,    8,    9,    8,    9,   11,    4,
-       11
+        1,    1,    1,    2,    3
     } ;
 
-static const flex_int16_t yy_base[205] =
+static const flex_int16_t yy_base[19] =
     {   0,
-        0,    0,  510,  509,   49,   50,  521,  524,   52,  524,
-      497,   54,  524,  510,   57,  524,  524,  504,  524,  501,
-       45,   45,   49,  524,  493,  492,  491,    0,  524,  524,
-      470,   40,   50,  472,   30,   52,  476,  462,  467,  471,
-      524,  457,  524,  493,  487,  475,  524,   70,   72,  524,
-       84,   88,   92,   94,   98,  524,  116,  119,  126,  524,
-        0,  524,    0,  124,  524,  524,   89,  134,  486,  147,
-      467,    0,  466,  456,  468,  457,  461,  450,  451,  452,
-      450,    0,  447,  446,  452,  451,  450,  474,  468,  524,
-      456,   93,  159,  146,  113,  128,  150,  524,    0,  165,
-
-      139,  478,  175,  477,  177,  206,  128,  188,  524,    0,
-      524,  205,    0,  204,  224,  210,  217,  232,  233,  451,
-      446,  437,  424,  418,  403,  389,  339,    0,    0,  295,
-      259,  266,  240,  524,   83,  524,  239,  164,  248,  524,
-      524,  243,  262,  253,  123,  251,  173,  220,    0,    0,
-      218,  185,  185,    0,  177,  170,  178,    0,  170,  258,
-      190,  167,  264,  275,    0,  159,  144,  145,    0,  133,
-      109,    0,  282,  266,  286,   61,   57,    0,    0,    0,
-      273,   20,    0,    0,  524,  306,  317,  328,  338,  343,
-      346,  356,  367,  378,  389,  400,  411,  421,  428,  433,
-
-      444,  455,  462,  470
+       10,    9,    0,    0,   13,   16,    0,    5,    0,    0,
+       16,    0,    0,   16,   16,    7,   10,    8
     } ;
 
-static const flex_int16_t yy_def[205] =
+static const flex_int16_t yy_def[19] =
     {   0,
-      185,    1,  186,  186,  187,  187,  185,  185,  185,  185,
-      185,  188,  185,  185,  189,  185,  185,  185,  185,  185,
-      185,  185,  190,  185,  185,  185,  185,  191,  185,  185,
-      191,  191,  191,  191,  191,  191,  191,  191,  191,  191,
-      185,  185,  185,  192,  192,  193,  185,  193,  185,  185,
-      194,  195,  196,  197,  194,  185,  185,  198,  198,  185,
-      199,  185,  200,  185,  185,  185,  185,  190,  190,  190,
-       70,  191,  191,  191,  191,  191,  191,  191,  191,  191,
-      191,  191,  191,  191,  191,  191,  191,  192,  192,  185,
-      193,  193,  194,  195,  196,  197,  195,  185,  201,  195,
-
-      196,  185,  196,  201,  195,  202,  198,  198,  185,  203,
-      185,  198,  200,  185,  185,  185,  185,   70,  190,  191,
-      191,  191,  191,  191,  191,  191,  191,  191,  191,  191,
-      191,  191,  191,  185,  204,  185,  202,  204,  202,  185,
-      185,  185,  185,  185,  190,  185,  119,  191,  191,  191,
-      191,  191,  191,  191,  191,  191,  191,  191,  191,  204,
-      204,  185,  185,  119,  191,  191,  191,  191,  191,  191,
-      191,  191,  185,  185,  190,  191,  191,  191,  191,  191,
-      185,  191,  191,  191,    0,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  185,  185,  185,  185,  185,  185,
-
-      185,  185,  185,  185
+       16,   16,   15,    3,   15,   15,   17,   15,    8,   18,
+       15,    8,    8,   15,    0,   15,   15,   15
     } ;
 
-static const flex_int16_t yy_nxt[576] =
+static const flex_int16_t yy_nxt[22] =
     {   0,
-        8,    9,   10,    9,   11,   12,    8,   13,   14,   15,
-       16,   17,   13,   18,   19,   20,   21,   22,   23,   23,
-       24,   25,   26,   27,   28,   28,   28,   29,    8,   30,
-       28,   31,   32,   33,   34,   35,   28,   36,   28,   28,
-       28,   28,   37,   38,   28,   28,   39,   40,   41,   42,
-       43,   47,   47,   49,  184,   49,   52,   65,   57,   53,
-       58,   63,   66,   64,   64,   67,   60,   68,   68,   80,
-       74,   81,   91,   49,   70,   49,   75,   48,   48,   54,
-       54,   76,   55,   71,   77,   61,   94,   82,   98,   95,
-       94,   78,   83,   98,  102,   91,  104,  103,   92,  103,
-
-      105,  183,   54,  106,   54,   63,  182,   64,   64,   96,
-       96,  160,   55,   99,   99,  185,  100,   57,  103,   57,
-       57,   92,  107,   96,   96,   60,   55,  185,  109,   57,
-       99,  107,   96,  103,   96,  111,   99,  140,   99,  185,
-       63,  185,   64,   64,  103,  180,   96,  110,   96,  114,
-       67,  134,   68,   68,  110,   98,  110,  164,  115,   70,
-      116,   97,  116,  117,   95,  118,  118,  105,   71,   98,
-      135,   99,   99,  179,  100,   99,   99,  185,  100,  178,
-      103,  119,   98,  177,   96,   96,  185,   55,  185,  185,
-       99,   99,  160,  100,   99,   98,   99,  141,   99,  176,
-
-       99,  173,   99,   99,  172,  100,  185,   96,  138,   96,
-      171,   95,  170,   99,  111,   99,  110,  116,  160,  116,
-      117,  169,  142,  142,  168,   99,  117,   99,  142,  142,
-      167,  101,  101,  110,  139,  144,  144,  116,  143,  116,
-      117,  138,  142,  142,   95,  185,  146,  185,  146,  185,
-      161,  147,  147,  106,  101,  166,  101,  145,  165,  117,
-      161,  142,  142,  135,  101,  101,   69,  139,  162,  163,
-      163,  144,  144,  101,  101,  146,  139,  146,  162,  159,
-      163,  163,  163,  163,  181,  181,  160,  101,  174,  101,
-      174,  181,  181,  175,  175,  174,  101,  174,  101,  158,
-
-      181,  181,  185,  157,  175,  175,   44,   44,   44,   44,
-       44,   44,   44,   44,   44,   44,   44,   46,   46,   46,
-       46,   46,   46,   46,   46,   46,   46,   46,   51,   51,
-       51,   51,   51,   51,   51,   51,   51,   51,   51,   59,
-      156,   59,   59,   59,   59,   59,   59,   59,   59,   69,
-       69,   69,   69,   72,   72,   72,   88,   88,   88,   88,
-       88,   88,   88,   88,   88,   88,   88,   91,   91,  155,
-       91,   91,   91,   91,   91,   91,   91,   91,   93,   93,
-       93,   93,   93,   93,   93,   93,   93,   93,   93,   97,
-       97,   97,   97,   97,   97,   97,   97,   97,   97,   97,
-
-      101,  101,  101,  101,  101,  101,  101,  101,  101,  101,
-      101,   96,   96,   96,   96,   96,   96,   96,   96,   96,
-       96,   96,  108,  154,  108,  108,  108,  108,  108,  108,
-      108,  108,  112,  112,  153,  112,  113,  113,  113,  113,
-      113,  113,  113,  113,   99,   99,   99,   99,  152,   99,
-       99,   99,   99,   99,   99,  137,  137,  137,  137,  137,
-      137,  137,  137,  137,  137,  137,  108,  108,  151,  108,
-      138,  138,  138,  138,  138,  138,  138,  138,  138,  150,
-      149,  148,  136,  136,   92,  185,   89,  133,  132,  131,
-      130,  129,  128,  127,  126,  125,  124,  123,  122,  121,
-
-      120,   69,  185,   92,   90,   89,   56,   87,   86,   85,
-       84,   79,   73,   50,   50,   50,   62,   62,   56,   50,
-      185,   45,   45,    7,  185,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  185,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  185,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  185,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  185,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  185
+        8,    9,    6,   10,    6,   12,   13,    6,    6,    6,
+       14,   11,   15,    7,    7,    5,   15,   15,   15,   15,
+       15
     } ;
 
-static const flex_int16_t yy_chk[576] =
+static const flex_int16_t yy_chk[22] =
     {   0,
-        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
-        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
-        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
-        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
-        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
-        1,    5,    6,    9,  182,    9,   12,   22,   15,   12,
-       15,   21,   22,   21,   21,   23,   15,   23,   23,   35,
-       32,   35,   48,   49,   23,   49,   32,    5,    6,   12,
-       12,   32,   12,   23,   33,   15,   51,   36,  135,   51,
-       52,   33,   36,   52,   53,   92,   54,   53,   48,   54,
-
-       55,  177,   12,   55,   12,   67,  176,   67,   67,   51,
-       51,  135,   51,   52,   52,   95,   52,   57,   95,   57,
-       58,   92,   58,   55,   55,   57,   55,   59,   58,  107,
-       96,  107,   51,   96,   51,   59,   52,  107,   52,  145,
-       64,  101,   64,   64,  101,  171,   55,   58,   55,   64,
-       68,   94,   68,   68,   59,   97,  107,  145,   64,   68,
-       70,   93,   70,   70,   93,   70,   70,  100,   68,  138,
-      100,   94,   94,  170,   94,   97,   97,  103,   97,  168,
-      103,   70,  105,  167,   93,   93,  147,   93,  147,  108,
-      100,  100,  138,  100,   94,  161,   94,  108,   97,  166,
-
-       97,  162,  105,  105,  159,  105,  112,   93,  106,   93,
-      157,  106,  156,  100,  112,  100,  108,  114,  161,  114,
-      114,  155,  114,  114,  153,  105,  116,  105,  116,  116,
-      152,  106,  106,  112,  106,  117,  117,  115,  114,  115,
-      115,  137,  115,  115,  137,  118,  119,  118,  119,  119,
-      139,  119,  119,  139,  106,  151,  106,  118,  148,  142,
-      160,  142,  142,  160,  137,  137,  118,  137,  142,  146,
-      146,  144,  144,  139,  139,  143,  139,  143,  144,  133,
-      143,  143,  163,  163,  174,  174,  160,  137,  164,  137,
-      164,  181,  181,  164,  164,  173,  139,  173,  139,  132,
-
-      173,  173,  175,  131,  175,  175,  186,  186,  186,  186,
-      186,  186,  186,  186,  186,  186,  186,  187,  187,  187,
-      187,  187,  187,  187,  187,  187,  187,  187,  188,  188,
-      188,  188,  188,  188,  188,  188,  188,  188,  188,  189,
-      130,  189,  189,  189,  189,  189,  189,  189,  189,  190,
-      190,  190,  190,  191,  191,  191,  192,  192,  192,  192,
-      192,  192,  192,  192,  192,  192,  192,  193,  193,  127,
-      193,  193,  193,  193,  193,  193,  193,  193,  194,  194,
-      194,  194,  194,  194,  194,  194,  194,  194,  194,  195,
-      195,  195,  195,  195,  195,  195,  195,  195,  195,  195,
-
-      196,  196,  196,  196,  196,  196,  196,  196,  196,  196,
-      196,  197,  197,  197,  197,  197,  197,  197,  197,  197,
-      197,  197,  198,  126,  198,  198,  198,  198,  198,  198,
-      198,  198,  199,  199,  125,  199,  200,  200,  200,  200,
-      200,  200,  200,  200,  201,  201,  201,  201,  124,  201,
-      201,  201,  201,  201,  201,  202,  202,  202,  202,  202,
-      202,  202,  202,  202,  202,  202,  203,  203,  123,  203,
-      204,  204,  204,  204,  204,  204,  204,  204,  204,  122,
-      121,  120,  104,  102,   91,   89,   88,   87,   86,   85,
-       84,   83,   81,   80,   79,   78,   77,   76,   75,   74,
-
-       73,   71,   69,   46,   45,   44,   42,   40,   39,   38,
-       37,   34,   31,   27,   26,   25,   20,   18,   14,   11,
-        7,    4,    3,  185,  185,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  185,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  185,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  185,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  185,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  185
+        3,    3,    3,    3,    3,    8,    8,   16,   16,   16,
+       18,   17,    5,    2,    1,   15,   15,   15,   15,   15,
+       15
     } ;
-
-/* Table of booleans, true if rule could match eol. */
-static const flex_int32_t yy_rule_can_match_eol[53] =
-    {   0,
-0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-    0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0,     };
 
 static yy_state_type yy_last_accepting_state;
 static char *yy_last_accepting_cpos;
@@ -658,178 +446,18 @@ int yy_flex_debug = 0;
 #define YY_MORE_ADJ 0
 #define YY_RESTORE_YY_MORE_OFFSET
 char *yytext;
-#line 1 "lexer.l"
+#line 1 "./comments.l"
 
+#line 6 "./comments.l"
 
-/* definition section */
-#line 9 "lexer.l"
+#include<stdio.h>
+#include<stdlib.h>
 
-#include<iostream>
-#include<string>
-#include<cstring>
-#include<cstdio>
-#include<cstdlib>
-#include "SymbolTable.h"
-
-using namespace std;
-
-FILE *logFile;
-FILE *tokenFile;
-
-std::string logFileName =  "log.txt";
-std::string tokenFileName = "token.txt";
-
-SymbolTable *symbolTable = new SymbolTable(7);
-
-int ERR_COUNT = 0;
-
-void InsertIntoSymTable(std::string Name, std::string Type) {
-    bool accept = symbolTable->Insert(Name, Type);
-    if (accept) {
-        symbolTable->printAllScopeTable();
-    }
-}
-
-void StringUtil(std::string s) {
-    std::string str = "";
-    for (int i = 0; i < s.size(); i++) {
-        if (s[i] == '\"') {
-            continue;
-        }
-        else if (s[i]=='\\' && s[i+1] == '\r' && s[i+2] == '\n' && i+1<s.size()) {
-            i+=2;
-        }
-        else if (i+1<s.size() && s[i]=='\\' && s[i+1] == '\n')
-        {
-            i++;
-        }
-        else if (s[i] == '\\') {
-            if (s[i+1] == 't') s[i+1] = '\t';
-            else if (s[i+1] == 'n') s[i+1] = '\n';
-            else if (s[i+1] == '\\') s[i+1] = '\\';
-            else if (s[i+1] == '\'') s[i+1] = '\'';
-            else if (s[i+1] == 'a') s[i+1] = '\a';
-            else if (s[i+1] == 'f') s[i+1] = '\f';
-            else if (s[i+1] == 'r') s[i+1] = '\r';
-            else if (s[i+1] == 'b') s[i+1] = '\b';
-            else if (s[i+1] == 'v') s[i+1] = '\v';
-            else if (s[i+1] == '0') s[i+1] = '\0';
-            else if (s[i+1] == '\"') s[i+1] = '\"';
-        }
-        else {
-            str.push_back(s[i]);
-        }
-    }
-    printf("%s\n", str.c_str());
-    fprintf(logFile, "<STRING, \"%s\">\n\n", str.c_str());
-    fprintf(tokenFile, "<STRING, \"%s\"> ", str.c_str());
-}
-
-void processConstChar(std::string str) {
-    char ch;
-    if (str.size() == 3 && str[0] == '\'' && str[2] == '\'') {
-        ch = str[1];
-    }
-    else if (str[1] == '\\'){
-        char sc = str[2];
-        switch (sc) {
-            case 'n':
-                ch = '\n';
-                break;
-            case 't':
-                ch = '\t';
-                break;
-            case '\\':
-                ch = '\\';
-                break;
-            case 'a':
-                ch = '\a';
-                break;
-            case 'f':
-                ch = '\f';
-                break;
-            case 'r':
-                ch = '\r';
-                break;
-            case 'b':
-                ch = '\b';
-                break;
-            case 'v':
-                ch = '\v';
-                break;
-            case '0':
-                ch = '\0';
-                break;
-            case '\"':
-                ch = '\"';
-                break;
-            case '\'':
-                ch = '\'';
-                break;
-            default:
-                break;
-        } 
-
-    }
-    else return;
-    fprintf(logFile, "<CONST_CHAR, %c>\n\n", ch);
-    fprintf(tokenFile, "<CONST_CHAR, %c> ", ch);
-
-} 
-
-
-#line 782 "lexer.cpp"
-/* ----------------------------------------------------------------*/
-/* keywords */
-/* ----------------------------------------------------------------*/
-/* ----------------------------------------------------------------*/
-/* ----------------------------------------------------------------*/
-/* constants */
-/* ----------------------------------------------------------------*/
-/* Integer Literals */
-/* Floating Point Literals */
-/* Possible variations: */
-/* Digit part - [digits.] , [.digits] , [digits.digits] */
-/* Exponential part - (optional) E[digits], E[+digits], E[-digits] */  
-/* Character Literals */
-/* There are normal characters(those within ASCII 32-126) */
-/* and within them special characters */
-/* '\n', '\t', '\\', '\'', '\a', '\f', '\r', '\b', '\v', '\0' */
-/* ----------------------------------------------------------------*/
-/* ----------------------------------------------------------------*/
-/* operators and punctuators */
-/* ----------------------------------------------------------------*/
-/* ----------------------------------------------------------------*/
-/* ----------------------------------------------------------------*/
-/* identifiers */
-/* ----------------------------------------------------------------*/
-/* ----------------------------------------------------------------*/
-/* ----------------------------------------------------------------*/
-/* strings */
-/* ----------------------------------------------------------------*/
-/* ----------------------------------------------------------------*/
-/* ----------------------------------------------------------------*/
-/* comments */
-/* ----------------------------------------------------------------*/
-/* done with state */
-/* ----------------------------------------------------------------*/
-/* errors */
-/* ----------------------------------------------------------------*/
-/* TOO MANY DECIMAL ERROR */
-/* ILL FORMED NUMBER ERROR */
-/* VARIABLE NAMING ERROR */
-/* MULTI CHARACTER CONSTANT ERROR */
-/* EMPTY CHARACTER CONSTANT ERROR */
-/* UNFINISHED CHARACTER ERROR */
-/* UNTERMINATED STRING */
-/* UNRECOGNIZED CHARACTER ERROR */
-/* ----------------------------------------------------------------*/
-/* rules section */
-#line 829 "lexer.cpp"
+#line 457 "lex.yy.c"
+#line 458 "lex.yy.c"
 
 #define INITIAL 0
 #define COMMENT 1
-#define SINGLECOMMENT 2
 
 #ifndef YY_NO_UNISTD_H
 /* Special case for "unistd.h", since it is non-ANSI. We include it way
@@ -1044,9 +672,10 @@ YY_DECL
 		}
 
 	{
-#line 269 "lexer.l"
+#line 15 "./comments.l"
 
-#line 1050 "lexer.cpp"
+
+#line 679 "lex.yy.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -1073,13 +702,13 @@ yy_match:
 			while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 				{
 				yy_current_state = (int) yy_def[yy_current_state];
-				if ( yy_current_state >= 186 )
+				if ( yy_current_state >= 16 )
 					yy_c = yy_meta[yy_c];
 				}
 			yy_current_state = yy_nxt[yy_base[yy_current_state] + yy_c];
 			++yy_cp;
 			}
-		while ( yy_base[yy_current_state] != 524 );
+		while ( yy_base[yy_current_state] != 16 );
 
 yy_find_action:
 		yy_act = yy_accept[yy_current_state];
@@ -1091,16 +720,6 @@ yy_find_action:
 			}
 
 		YY_DO_BEFORE_ACTION;
-
-		if ( yy_act != YY_END_OF_BUFFER && yy_rule_can_match_eol[yy_act] )
-			{
-			int yyl;
-			for ( yyl = 0; yyl < yyleng; ++yyl )
-				if ( yytext[yyl] == '\n' )
-					
-    yylineno++;
-;
-			}
 
 do_action:	/* This label is used only to access EOF actions. */
 
@@ -1115,436 +734,29 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 270 "lexer.l"
-{
-    BEGIN(COMMENT);
-    fprintf(logFile, "Line no %d, Token <COMMENT> Lexeme %s", yylineno, yytext);
-}
+#line 17 "./comments.l"
+{BEGIN(COMMENT);
+	printf("Comment started at %s\n", yytext);}
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 275 "lexer.l"
-{
-    BEGIN(INITIAL); 
-    fprintf(logFile, "*/ found\n\n");
-}
+#line 19 "./comments.l"
+{BEGIN(INITIAL);}
 	YY_BREAK
 case 3:
 /* rule 3 can match eol */
 YY_RULE_SETUP
-#line 280 "lexer.l"
-{fprintf(logFile, "%s", yytext);}
-	YY_BREAK
-case YY_STATE_EOF(COMMENT):
-#line 282 "lexer.l"
-{fprintf(logFile, "Unterminated Comment\n"); return 0;}
+#line 20 "./comments.l"
+{printf("Inside comment\n");}
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 284 "lexer.l"
-{
-    BEGIN(SINGLECOMMENT);
-    fprintf(logFile, "Line no %d, Token <COMMENT> Lexeme %s", yylineno, yytext);
-}
-	YY_BREAK
-case 5:
-/* rule 5 can match eol */
-YY_RULE_SETUP
-#line 289 "lexer.l"
-{
-    BEGIN(INITIAL);
-    fprintf(logFile, " found\n");
-}
-	YY_BREAK
-case 6:
-/* rule 6 can match eol */
-YY_RULE_SETUP
-#line 294 "lexer.l"
-{
-    fprintf(logFile, "%s", yytext);
-}
-	YY_BREAK
-case 7:
-YY_RULE_SETUP
-#line 298 "lexer.l"
-{
-    fprintf(tokenFile, "<IF> ");
-    fprintf(logFile, "Line no %d: Token <IF> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 8:
-YY_RULE_SETUP
-#line 303 "lexer.l"
-{
-    fprintf(tokenFile, "<ELSE> ");
-    fprintf(logFile, "Line no %d: Token <ELSE> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 9:
-YY_RULE_SETUP
-#line 308 "lexer.l"
-{
-    fprintf(tokenFile, "<FOR> ");
-    fprintf(logFile, "Line no %d: Token <FOR> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 10:
-YY_RULE_SETUP
-#line 313 "lexer.l"
-{
-    fprintf(tokenFile, "<WHILE> ");
-    fprintf(logFile, "Line no %d: Token <WHILE> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 11:
-YY_RULE_SETUP
-#line 318 "lexer.l"
-{
-    fprintf(tokenFile, "<DO> ");
-    fprintf(logFile, "Line no %d: Token <DO> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 12:
-YY_RULE_SETUP
-#line 323 "lexer.l"
-{
-    fprintf(tokenFile, "<BREAK> ");
-    fprintf(logFile, "Line no %d: Token <BREAK> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 13:
-YY_RULE_SETUP
-#line 328 "lexer.l"
-{
-    fprintf(tokenFile, "<INT> ");
-    fprintf(logFile, "Line no %d: Token <INT> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 14:
-YY_RULE_SETUP
-#line 333 "lexer.l"
-{
-    fprintf(tokenFile, "<CHAR> ");
-    fprintf(logFile, "Line no %d: Token <CHAR> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 15:
-YY_RULE_SETUP
-#line 338 "lexer.l"
-{
-    fprintf(tokenFile, "<FLOAT> ");
-    fprintf(logFile, "Line no %d: Token <FLOAT> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 16:
-YY_RULE_SETUP
-#line 343 "lexer.l"
-{
-    fprintf(tokenFile, "<DOUBLE> ");
-    fprintf(logFile, "Line no %d: Token <DOUBLE> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 17:
-YY_RULE_SETUP
-#line 348 "lexer.l"
-{
-    fprintf(tokenFile, "<VOID> ");
-    fprintf(logFile, "Line no %d: Token <VOID> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 18:
-YY_RULE_SETUP
-#line 353 "lexer.l"
-{
-    fprintf(tokenFile, "<RETURN> ");
-    fprintf(logFile, "Line no %d: Token <RETURN> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 19:
-YY_RULE_SETUP
-#line 358 "lexer.l"
-{
-    fprintf(tokenFile, "<SWITCH> ");
-    fprintf(logFile, "Line no %d: Token <SWITCH> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 20:
-YY_RULE_SETUP
-#line 363 "lexer.l"
-{
-    fprintf(tokenFile, "<CASE> ");
-    fprintf(logFile, "Line no %d: Token <CASE> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 21:
-YY_RULE_SETUP
-#line 368 "lexer.l"
-{
-    fprintf(tokenFile, "<DEFAULT> ");
-    fprintf(logFile, "Line no %d: Token <DEFAULT> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 22:
-YY_RULE_SETUP
-#line 373 "lexer.l"
-{
-    fprintf(tokenFile, "<CONTINUE> ");
-    fprintf(logFile, "Line no %d: Token <CONTINUE> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 23:
-YY_RULE_SETUP
-#line 378 "lexer.l"
-{
-    fprintf(tokenFile, "<LPAREN, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <LPAREN> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 24:
-YY_RULE_SETUP
-#line 383 "lexer.l"
-{
-    fprintf(tokenFile, "<RPAREN, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <RPAREN> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 25:
-YY_RULE_SETUP
-#line 388 "lexer.l"
-{
-    fprintf(tokenFile, "<LCURL, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <LCURL> Lexeme %s found\n\n", yylineno, yytext);
-    symbolTable->EnterScope();
-}
-	YY_BREAK
-case 26:
-YY_RULE_SETUP
-#line 394 "lexer.l"
-{
-    fprintf(tokenFile, "<RCURL, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <RCURL> Lexeme %s found\n\n", yylineno, yytext);
-    symbolTable->ExitScope();
-}
-	YY_BREAK
-case 27:
-YY_RULE_SETUP
-#line 400 "lexer.l"
-{
-    fprintf(tokenFile, "<LTHIRD, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <LTHIRD> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 28:
-YY_RULE_SETUP
-#line 405 "lexer.l"
-{
-    fprintf(tokenFile, "<RTHIRD, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <RTHIRD> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 29:
-YY_RULE_SETUP
-#line 410 "lexer.l"
-{
-    fprintf(tokenFile, "<COMMA, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <COMMA> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 30:
-YY_RULE_SETUP
-#line 415 "lexer.l"
-{
-    fprintf(tokenFile, "<SEMICOLON, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <SEMICOLON> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 31:
-YY_RULE_SETUP
-#line 420 "lexer.l"
-{
-    fprintf(tokenFile, "<INCOP, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <INCOP> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 32:
-YY_RULE_SETUP
-#line 425 "lexer.l"
-{
-    fprintf(tokenFile, "<ADDOP, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <ADDOP> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 33:
-YY_RULE_SETUP
-#line 430 "lexer.l"
-{
-    fprintf(tokenFile, "<MULOP, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <MULOP> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 34:
-YY_RULE_SETUP
-#line 435 "lexer.l"
-{
-    fprintf(tokenFile, "<RELOP, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <RELOP> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 35:
-YY_RULE_SETUP
-#line 440 "lexer.l"
-{
-    fprintf(tokenFile, "<LOGICOP, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <LOGICOP> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 36:
-YY_RULE_SETUP
-#line 445 "lexer.l"
-{
-    fprintf(tokenFile, "<ASSIGNOP, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <ASSIGNOP> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 37:
-YY_RULE_SETUP
-#line 450 "lexer.l"
-{
-    fprintf(tokenFile, "<NOT, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <NOT> Lexeme %s found\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 38:
-YY_RULE_SETUP
-#line 455 "lexer.l"
-{
-    fprintf(tokenFile, "<CONST_INT, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <CONST_INT> Lexeme %s found\n\n", yylineno, yytext);
-    InsertIntoSymTable(yytext, "CONST_INT");
-}
-	YY_BREAK
-case 39:
-YY_RULE_SETUP
-#line 461 "lexer.l"
-{
-    fprintf(tokenFile, "<CONST_FLOAT, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <CONST_FLOAT> Lexeme %s found\n\n", yylineno, yytext);
-    InsertIntoSymTable(yytext, "CONST_FLOAT");
-}
-	YY_BREAK
-case 40:
-YY_RULE_SETUP
-#line 467 "lexer.l"
-{
-    //fprintf(tokenFile, "<CONST_CHAR, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <CONST_CHAR> Lexeme %s found --> ", yylineno, yytext);
-    processConstChar(yytext);
-    InsertIntoSymTable(yytext, "CONST_CHAR");
-}
-	YY_BREAK
-case 41:
-YY_RULE_SETUP
-#line 474 "lexer.l"
-{
-    fprintf(tokenFile, "<ID, %s> ", yytext);
-    fprintf(logFile, "Line no %d: Token <ID> Lexeme %s found\n\n", yylineno, yytext);
-    InsertIntoSymTable(yytext, "ID");
-}
-	YY_BREAK
-case 42:
-/* rule 42 can match eol */
-YY_RULE_SETUP
-#line 480 "lexer.l"
-{
-    printf("String found %s\n", yytext);
-    std::string s(yytext);
-    int newLineCntr = 0;
-    for(int i = 0; i < s.size(); i++)
-    {
-        if (s[i] == '\n') {
-            newLineCntr++;
-        }
-    }
-    fprintf(logFile, "Line no %d: Token <STRING> Lexeme %s found --> ", yylineno-newLineCntr, yytext);
-    StringUtil(yytext);
-}
-	YY_BREAK
-case 43:
-YY_RULE_SETUP
-#line 494 "lexer.l"
-{
-    ERR_COUNT++;
-    fprintf(logFile, "Error at line no %d: Too many decimal points %s\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 44:
-YY_RULE_SETUP
-#line 499 "lexer.l"
-{
-    ERR_COUNT++;
-    fprintf(logFile, "Error at line no %d: Invalid prefix on ID or invalid suffix on Number %s\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 45:
-YY_RULE_SETUP
-#line 504 "lexer.l"
-{
-    ERR_COUNT++;
-    fprintf(logFile, "Error at line no %d: Ill formed number %s\n\n", yylineno, yytext);    
-}
-	YY_BREAK
-case 46:
-YY_RULE_SETUP
-#line 509 "lexer.l"
-{
-    ERR_COUNT++;
-    fprintf(logFile, "Error at line no %d: Unterminated character %s\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 47:
-YY_RULE_SETUP
-#line 514 "lexer.l"
-{
-    ERR_COUNT++;
-    fprintf(logFile, "Error at line no %d: Multi character constant error %s\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 48:
-YY_RULE_SETUP
-#line 519 "lexer.l"
-{
-    ERR_COUNT++;
-    fprintf(logFile, "Error at line no %d: Empty character constant error %s\n\n", yylineno, yytext);
-}
-	YY_BREAK
-case 49:
-/* rule 49 can match eol */
-YY_RULE_SETUP
-#line 524 "lexer.l"
-{
-    ERR_COUNT++;
-    fprintf(logFile, "Error at line no %d: Unterminated String %s\n\n", yylineno, yytext);    
-}
-	YY_BREAK
-case 50:
-/* rule 50 can match eol */
-YY_RULE_SETUP
-#line 531 "lexer.l"
-{}
-	YY_BREAK
-case 51:
-YY_RULE_SETUP
-#line 533 "lexer.l"
-{}
-	YY_BREAK
-case 52:
-YY_RULE_SETUP
-#line 535 "lexer.l"
+#line 22 "./comments.l"
 ECHO;
 	YY_BREAK
-#line 1546 "lexer.cpp"
+#line 758 "lex.yy.c"
 case YY_STATE_EOF(INITIAL):
-case YY_STATE_EOF(SINGLECOMMENT):
+case YY_STATE_EOF(COMMENT):
 	yyterminate();
 
 	case YY_END_OF_BUFFER:
@@ -1840,7 +1052,7 @@ static int yy_get_next_buffer (void)
 		while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 			{
 			yy_current_state = (int) yy_def[yy_current_state];
-			if ( yy_current_state >= 186 )
+			if ( yy_current_state >= 16 )
 				yy_c = yy_meta[yy_c];
 			}
 		yy_current_state = yy_nxt[yy_base[yy_current_state] + yy_c];
@@ -1868,11 +1080,11 @@ static int yy_get_next_buffer (void)
 	while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 		{
 		yy_current_state = (int) yy_def[yy_current_state];
-		if ( yy_current_state >= 186 )
+		if ( yy_current_state >= 16 )
 			yy_c = yy_meta[yy_c];
 		}
 	yy_current_state = yy_nxt[yy_base[yy_current_state] + yy_c];
-	yy_is_jam = (yy_current_state == 185);
+	yy_is_jam = (yy_current_state == 15);
 
 		return yy_is_jam ? 0 : yy_current_state;
 }
@@ -1910,10 +1122,6 @@ static int yy_get_next_buffer (void)
 		}
 
 	*--yy_cp = (char) c;
-
-    if ( c == '\n' ){
-        --yylineno;
-    }
 
 	(yytext_ptr) = yy_bp;
 	(yy_hold_char) = *yy_cp;
@@ -1991,11 +1199,6 @@ static int yy_get_next_buffer (void)
 	c = *(unsigned char *) (yy_c_buf_p);	/* cast for 8-bit char's */
 	*(yy_c_buf_p) = '\0';	/* preserve yytext */
 	(yy_hold_char) = *++(yy_c_buf_p);
-
-	if ( c == '\n' )
-		
-    yylineno++;
-;
 
 	return c;
 }
@@ -2463,9 +1666,6 @@ static int yy_init_globals (void)
      * This function is called from yylex_destroy(), so don't allocate here.
      */
 
-    /* We do not touch yylineno unless the option is enabled. */
-    yylineno =  1;
-    
     (yy_buffer_stack) = NULL;
     (yy_buffer_stack_top) = 0;
     (yy_buffer_stack_max) = 0;
@@ -2560,46 +1760,24 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 535 "lexer.l"
+#line 22 "./comments.l"
 
-
-int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        printf("Please provide input file name and try again\n");
+	if(argc!=2){
+		printf("Please provide input file name and try again\n");
 		return 0;
-    }
-
-    FILE *fin=fopen(argv[1],"r");
+	}
+	
+	FILE *fin=fopen(argv[1],"r");
 	if(fin==NULL){
 		printf("Cannot open specified file\n");
 		return 0;
 	}
+	
 
-    logFile = fopen(logFileName.c_str(), "w");
-    tokenFile = fopen(tokenFileName.c_str(), "w");
-
-    symbolTable->setFileWriter(logFile);
-
-    yyin= fin;
+	yyin= fin;
 	yylex();
-
-    symbolTable->printAllScopeTable();
-
-    fprintf(logFile, "Total lines: %d\nTotal errors: %d", yylineno, ERR_COUNT);
 	fclose(yyin);
-    fclose(logFile);
-    fclose(tokenFile);
 	return 0;
-
-
-// {UNRECOGNIZED_CHAR_ERR} {
-//     ERR_COUNT++;
-//     fprintf(logFile, "Error at line no %d: Unrecognized character error %s\n\n", yylineno, yytext);        
-// }
-
-
-
-
-
-
 }
+
+

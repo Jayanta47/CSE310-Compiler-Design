@@ -9,61 +9,50 @@ private:
     ScopeTable *currScopeTable;
     ScopeTable *tempPtr;
 
-    std::ofstream *fileWriter;
+    FILE *fileWriter;
     bool writeToFile;
 
 public:
-    SymbolTable(int N, std::ofstream *ptr = nullptr);
-    SymbolTable(int N, std::string filename);
+    SymbolTable(int N);
 
     void EnterScope();
     void ExitScope();
     bool Insert(std::string Name, std::string Type);
-    bool Insert(symbolInfo *item);
     bool Remove(std::string Name);
     symbolInfo *LookUp(std::string Name);
     void printCurrentScopeTable();
     void printAllScopeTable();
 
-    void setFileWriter(std::ofstream *ptr);
+    void setFileWriter(FILE *file);
     void writeInFile(std::string Msg);
 
     ~SymbolTable();
 };
 
-SymbolTable::SymbolTable(int N, std::ofstream *ptr)
+SymbolTable::SymbolTable(int N)
 {
     this->def_bucket_size = N;
     this->tempPtr = nullptr;
-    this->fileWriter = ptr;
-    if (ptr != nullptr) this->writeToFile = true;
-    this->currScopeTable = new ScopeTable(this->def_bucket_size, 1, this->fileWriter);
+    this->fileWriter = nullptr;
+    this->currScopeTable = new ScopeTable(this->def_bucket_size, 1);
 }
 
-SymbolTable::SymbolTable(int N, std::string filename = "output.txt")
-{
-    this->def_bucket_size = N;
-    this->tempPtr = nullptr;
-    this->writeToFile = true;
-    this->fileWriter = new std::ofstream(filename); 
-    this->currScopeTable = new ScopeTable(this->def_bucket_size, 1, this->fileWriter);
-}
 
-void SymbolTable::setFileWriter(std::ofstream *ptr)
+void SymbolTable::setFileWriter(FILE *file)
 {
     this->writeToFile = true;
-    this->fileWriter = ptr;
+    this->fileWriter = file;
 }
 
 void SymbolTable::writeInFile(std::string Msg)
 {
-    (*this->fileWriter)<<Msg<<"\n\n";
+    if (this->writeToFile)fprintf(this->fileWriter, "%s\n\n", Msg.c_str());
 }
 
 void SymbolTable::EnterScope()
 {
     this->tempPtr = new ScopeTable(this->def_bucket_size,this->currScopeTable->getNextScopeNum(),
-                                    this->currScopeTable, this->fileWriter);
+                                    this->currScopeTable);
     this->currScopeTable = this->tempPtr;
     this->tempPtr = nullptr;
 }
@@ -72,10 +61,6 @@ void SymbolTable::ExitScope()
 {
     if (this->currScopeTable->getParentScope() == nullptr)
     {
-        // if (this->writeToFile)
-        // {
-        //     this->writeInFile("Cannot Exit Global Scope Table");
-        // }
         return;
     }
 
@@ -86,13 +71,16 @@ void SymbolTable::ExitScope()
 
 bool SymbolTable::Insert(std::string Name, std::string Type)
 {
-    return this->currScopeTable->Insert(Name, Type);
+    bool accept = this->currScopeTable->Insert(Name, Type);
+    if (!accept) {
+        // printf("\nfound %s\n", Name.c_str());
+        std::string msg = Name + " already exists in current ScopeTable";
+        this->writeInFile(msg);
+    }
+
+    return accept;
 }
 
-bool SymbolTable::Insert(symbolInfo *item)
-{
-    return this->currScopeTable->Insert(item);
-}
 
 bool SymbolTable::Remove(std::string Name)
 {
@@ -121,7 +109,7 @@ symbolInfo *SymbolTable::LookUp(std::string Name)
 
 void SymbolTable::printCurrentScopeTable()
 {
-    this->currScopeTable->Print();
+    this->currScopeTable->Print(this->fileWriter);
 }
 
 void SymbolTable::printAllScopeTable()
@@ -129,7 +117,7 @@ void SymbolTable::printAllScopeTable()
     this->tempPtr = this->currScopeTable;
     while(this->tempPtr != nullptr)
     {
-        this->tempPtr->Print();
+        this->tempPtr->Print(this->fileWriter);
         this->tempPtr = this->tempPtr->getParentScope();
     }
 
