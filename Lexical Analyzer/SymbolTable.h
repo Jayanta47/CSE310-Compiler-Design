@@ -72,11 +72,11 @@ void SymbolTable::ExitScope()
 {
     if (this->currScopeTable->getParentScope() == nullptr)
     {
-        std::cout<<"Cannot Exit Global Scope Table\n";
-        if (this->writeToFile)
-        {
-            this->writeInFile("Cannot Exit Global Scope Table");
-        }
+        // if (this->writeToFile)
+        // {
+        //     this->writeInFile("Cannot Exit Global Scope Table");
+        // }
+        return;
     }
 
     this->tempPtr = this->currScopeTable;
@@ -130,7 +130,6 @@ void SymbolTable::printAllScopeTable()
     while(this->tempPtr != nullptr)
     {
         this->tempPtr->Print();
-        std::cout<<std::endl;
         this->tempPtr = this->tempPtr->getParentScope();
     }
 
@@ -140,6 +139,7 @@ SymbolTable::~SymbolTable()
 {
     this->tempPtr = nullptr;
     this->currScopeTable = nullptr;
+    this->fileWriter = nullptr;
 }
 
 #endif

@@ -33,7 +33,6 @@ public:
     ScopeTable(int n_buckets, int id, std::ofstream *ptr = nullptr);
     ScopeTable(int n_buckets, int id, ScopeTable *parentScope, std::ofstream *ptr = nullptr);
 
-    void creationMsg();
     void writeInFile(std::string Msg, bool lineGap = true);
 
     void setParentScope(ScopeTable *parentScope);
@@ -42,7 +41,7 @@ public:
 
     bool Insert(symbolInfo *item);
     bool Insert(std::string Name, std::string Type);
-    symbolInfo *LookUp(std::string Name, bool showLoc = true);
+    symbolInfo *LookUp(std::string Name, bool showLoc = false);
     bool Delete(std::string Name);
     void Print();
 
@@ -87,18 +86,8 @@ ScopeTable::ScopeTable(int n_buckets, int id, ScopeTable *parentScope, std::ofst
         this->fileWriter = ptr;
         this->writeToFile = true;
     }
-    this->creationMsg();
 }
 
-void ScopeTable::creationMsg()
-{
-    std::string Msg = "New ScopeTable with id " + this->idString + " created";
-    std::cout<<Msg<<"\n\n";
-    if (this->fileWriter != nullptr)
-    {
-        this->writeInFile(Msg);
-    }
-}
 
 void ScopeTable::writeInFile(std::string Msg, bool lineGap)
 {
@@ -166,7 +155,6 @@ bool ScopeTable::Insert(symbolInfo *item)
     if (returnPtr != nullptr)
     {
         std::string Msg = returnPtr->_str() + " already exists in current ScopeTable";
-        std::cout<<Msg<<"\n\n";
         if (writeToFile) this->writeInFile(Msg);
         return false;
     }
@@ -191,10 +179,9 @@ bool ScopeTable::Insert(symbolInfo *item)
         this->bucket[index] = item;
     }
 
-    std::string Msg = "Inserted in ScopeTable# " + this->idString + " at position " 
-                        + patch::to_string(index) + ", " + patch::to_string(pos);
-    std::cout<<Msg<<"\n\n";
-    this->writeInFile(Msg);
+    // std::string Msg = "Inserted in ScopeTable# " + this->idString + " at position " 
+    //                     + patch::to_string(index) + ", " + patch::to_string(pos);
+    // this->writeInFile(Msg);
 
     return true;
 }
@@ -205,7 +192,6 @@ bool ScopeTable::Insert(std::string Name, std::string Type)
     if (returnPtr != nullptr)
     {
         std::string Msg = returnPtr->_str() + " already exists in current ScopeTable";
-        std::cout<<Msg<<"\n\n";
         if (writeToFile) this->writeInFile(Msg);
         return false;
     }
@@ -231,10 +217,9 @@ bool ScopeTable::Insert(std::string Name, std::string Type)
         this->bucket[index] = item;
     }
 
-    std::string Msg = "Inserted in ScopeTable# " + this->idString + " at position " 
-                        + patch::to_string(index) + ", " + patch::to_string(pos);
-    std::cout<<Msg<<"\n\n";
-    if (writeToFile) this->writeInFile(Msg);
+    // std::string Msg = "Inserted in ScopeTable# " + this->idString + " at position " 
+    //                     + patch::to_string(index) + ", " + patch::to_string(pos);
+    // if (writeToFile) this->writeInFile(Msg);
 
     return true;
 
@@ -256,7 +241,6 @@ symbolInfo *ScopeTable::LookUp(std::string Name, bool showLoc)
             this->pos = pos;
             if(showLoc)
             {
-                std::cout<<Msg<<"\n\n"; 
                 if (writeToFile) this->writeInFile(Msg);
             }
             
@@ -276,8 +260,7 @@ bool ScopeTable::Delete(std::string Name)
 
     if (delItem == nullptr)
     {
-        std::cout<<"Not Found"<<std::endl;
-        if (writeToFile) this->writeInFile("Not Found");
+        //if (writeToFile) this->writeInFile("Not Found");
         return false;
     }
     if (delItem->getPrev() != nullptr)
@@ -296,36 +279,30 @@ bool ScopeTable::Delete(std::string Name)
 
     delete delItem;
 
-    std::string Msg = "Deleted Entry " + patch::to_string(this->index) + ", " + 
-                        patch::to_string(this->pos) + " from current ScopeTable";
-    std::cout<<Msg<<"\n\n";
-    if (writeToFile) this->writeInFile(Msg);
+    // std::string Msg = "Deleted Entry " + patch::to_string(this->index) + ", " + 
+    //                     patch::to_string(this->pos) + " from current ScopeTable";
+    // if (writeToFile) this->writeInFile(Msg);
     return true;
 }
 
 void ScopeTable::Print()
 {
-    std::cout<<"\nScopeTable # "<<this->idString<<"\n";
     if (this->writeToFile) this->writeInFile("\nScopeTable # " + this->idString, false);
     for (int i = 0; i < this->n_buckets; i++)
     {
-        std::cout<<i<<" --> ";
         if (this->writeToFile) (*this->fileWriter)<<i<<" --> ";
         if (this->bucket[i] != nullptr)
         {
             symbolInfo *temp = this->bucket[i];
             while(temp != nullptr)
             {
-                std::cout<<temp->_str()<<" ";
                 if (this->writeToFile) (*this->fileWriter)<<temp->_str()<<" ";
                 temp = temp->getNext();
             }
         }
-        std::cout<<"\n";
         (*this->fileWriter)<<"\n";
 
     }
-    std::cout<<"\n";
     (*this->fileWriter)<<"\n";
 }
 
@@ -346,9 +323,11 @@ ScopeTable::~ScopeTable()
         }
     }
 
-    std::string Msg = "ScopeTable with id " + this->idString + " removed";
-    std::cout<<Msg<<"\n\n";
-    this->writeInFile(Msg);
+    this->fileWriter = nullptr;
+
+    // std::string Msg = "ScopeTable with id " + this->idString + " removed";
+    // std::cout<<Msg<<"\n\n";
+    // this->writeInFile(Msg);
 }
 
 

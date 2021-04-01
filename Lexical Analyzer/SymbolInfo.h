@@ -103,8 +103,7 @@ std::string symbolInfo::_str()
 symbolInfo::~symbolInfo()
 {
     if (this->next != nullptr)
-    {
-        //std::cout<<"desc deleting="<<this->Name<<std::endl;
+    {       
         this->next = nullptr;
     }
     if (this->prev != nullptr)
