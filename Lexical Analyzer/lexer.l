@@ -25,6 +25,8 @@ std::string tokenFileName = "token.txt";
 SymbolTable *symbolTable = new SymbolTable(7);
 
 int ERR_COUNT = 0;
+int tempCommentLineCnt;
+std::string commentStr = "";
 
 void InsertIntoSymTable(std::string Name, std::string Type) {
     bool accept = symbolTable->Insert(Name, Type);
@@ -33,10 +35,12 @@ void InsertIntoSymTable(std::string Name, std::string Type) {
     }
 }
 
+// \"([^\"\\\n]|\\['\"?\\abfnrtv]|\\\n|\\\r\n)*\" java
+
 void StringUtil(std::string s) {
     std::string str = "";
     for (int i = 0; i < s.size(); i++) {
-        if (s[i] == '\"') {
+        if (s[i] == '\"' && (i==0 || (i == s.size()-1))) {
             continue;
         }
         else if (s[i]=='\\' && s[i+1] == '\r' && s[i+2] == '\n' && i+1<s.size()) {
@@ -64,7 +68,7 @@ void StringUtil(std::string s) {
         }
     }
     printf("%s\n", str.c_str());
-    fprintf(logFile, "<STRING, \"%s\">\n\n", str.c_str());
+    fprintf(logFile, "<STRING, \"%s\"> \n\n", str.c_str());
     fprintf(tokenFile, "<STRING, \"%s\"> ", str.c_str());
 }
 
@@ -115,7 +119,7 @@ void processConstChar(std::string str) {
 
     }
     else return;
-    fprintf(logFile, "<CONST_CHAR, %c>\n\n", ch);
+    fprintf(logFile, "<CONST_CHAR, %c> \n\n", ch);
     fprintf(tokenFile, "<CONST_CHAR, %c> ", ch);
 
 } 
@@ -218,9 +222,16 @@ IDENTIFIER [a-zA-Z_][a-zA-Z0-9_]*
 /* strings */
 /* ----------------------------------------------------------------*/
 
+/*
 STRING_CHARS_NRML [^{NEWLINE}\"]
 NEWLINE_FOR_MUL_LINE_STRING (\\\n|\\\")
 STRING \"({STRING_CHARS_NRML}|{NEWLINE_FOR_MUL_LINE_STRING})*\"
+*/
+
+STRING_CHARS_NRML [^\n\r\"]
+NEWLINE_FOR_MUL_LINE_STRING (\\\n|\\|\\\r\n)
+STRING \"([^\"\\\n]|\\['\"?\\abfnrtv]|\\\n|\\\r\n)*\"
+
 
 /* ----------------------------------------------------------------*/
 
@@ -236,7 +247,7 @@ STRING \"({STRING_CHARS_NRML}|{NEWLINE_FOR_MUL_LINE_STRING})*\"
 /* ----------------------------------------------------------------*/
 
 /* TOO MANY DECIMAL ERROR */
-TOO_MANY_DECIMAL_POINT_ERR {DIGITS}*\.({DIGIT}*|{DIGITS})\.([ -~])*
+TOO_MANY_DECIMAL_POINT_ERR {DIGITS}*\.({DIGIT}*|{DIGITS})\.({DIGIT})*
 
 /* ILL FORMED NUMBER ERROR */
 ILL_FORMED_NUM_ERR (({ZERO_OR_MORE_DIGITS}\.{DIGITS})|{DIGITS})([Ee][-+]?)({CONST_FLOAT})
@@ -255,10 +266,8 @@ RIGHT_APS_MISSING_IN_CHAR '({NORMAL_CHARACTERS}|{SPECIAL_CHARACTERS})*
 SINGLE_FORWARD_SLASH_IN_CHAR '[\\]'
 UNFINISHER_CHAR_ERR ({RIGHT_APS_MISSING_IN_CHAR}|{SINGLE_FORWARD_SLASH_IN_CHAR})
 
-/* UNTERMINATED STRING */
-UNFINISHED_STRING_1 \"[^\"]* 
-UNFINISHED_STRING_2 \"([^\n]*|[^\\]\n)\"
-UNFINISHED_STRING_ERR ({UNFINISHED_STRING_1}|{UNFINISHED_STRING_2})
+
+UNFINISHED_STRING_ERR \"([^\"\\\n\r]|\\\r\n|\\\n)*(\n|\r\n)
 
 /* UNRECOGNIZED CHARACTER ERROR */
 UNRECOGNIZED_CHAR_ERR .
@@ -269,30 +278,45 @@ UNRECOGNIZED_CHAR_ERR .
 %%
 "/*" {
     BEGIN(COMMENT);
-    fprintf(logFile, "Line no %d, Token <COMMENT> Lexeme %s", yylineno, yytext);
+    tempCommentLineCnt = yylineno;
+    commentStr = "";
 }
 
 <COMMENT>"*/" {
     BEGIN(INITIAL); 
-    fprintf(logFile, "*/ found\n\n");
+    fprintf(logFile, "Line no %d: Token <COMMENT> Lexeme /*%s*/ found\n\n", tempCommentLineCnt, commentStr.c_str());
+    commentStr = "";
+    //fprintf(logFile, "*/ found\n\n");
 }
 
-<COMMENT>([^*]|\*[^\/])* {fprintf(logFile, "%s", yytext);}
+<COMMENT>([^*]|\*[^\/])* {
+    std::string str(yytext);
+    commentStr+=str;
+}
 
-<COMMENT><<EOF>> {fprintf(logFile, "Unterminated Comment\n"); return 0;}
+<COMMENT><<EOF>> {
+    fprintf(logFile, "Error at line no %d: Unterminated Comment /*%s*/\n\n", tempCommentLineCnt, commentStr.c_str()); 
+    ERR_COUNT++;
+    yylineno--;
+    return 0;
+}
 
 "//" {
     BEGIN(SINGLECOMMENT);
-    fprintf(logFile, "Line no %d, Token <COMMENT> Lexeme %s", yylineno, yytext);
+    tempCommentLineCnt = yylineno;
+    commentStr = "";
+    //fprintf(logFile, "Line no %d: Token <COMMENT> Lexeme %s", yylineno, yytext);
 }
 
 <SINGLECOMMENT>(\n) {
     BEGIN(INITIAL);
-    fprintf(logFile, " found\n");
+    fprintf(logFile, "Line no %d: Token <COMMENT> Lexeme //%s found\n\n", tempCommentLineCnt, commentStr.c_str());
+    commentStr = "";
 }
 
-<SINGLECOMMENT>([^\n]|(\\\n))* {
-    fprintf(logFile, "%s", yytext);
+<SINGLECOMMENT>([^\n\\\r]|(\\\n)|(\\\r\n))* {
+    std::string str(yytext);
+    commentStr+=str;
 }
 
 {IF} {
@@ -523,19 +547,36 @@ UNRECOGNIZED_CHAR_ERR .
 
 {UNFINISHED_STRING_ERR} {
     ERR_COUNT++;
-    fprintf(logFile, "Error at line no %d: Unterminated String %s\n\n", yylineno, yytext);    
+    std::string str(yytext);
+    int newLineCntr = 0;
+    for(int i = 0; i < str.size(); i++)
+    {
+        if (str[i] == '\n') {
+            newLineCntr++;
+        }
+    }
+    printf("%s - > %d\n", str.c_str(), yylineno);
+    str.pop_back();
+    printf("%ld\n", str.size());
+    printf("%s -> %d\n", str.c_str(), yylineno);
+    fprintf(logFile, "Error at line no %d: Unterminated String %s\n\n", yylineno-newLineCntr, str.c_str());    
 }
-
 
 
 {NEWLINE} {}
 
 {WHITESPACE} {}
 
+{UNRECOGNIZED_CHAR_ERR} {
+    ERR_COUNT++;
+    fprintf(logFile, "Error at line no %d: Unrecognized character %s\n\n", yylineno, yytext);        
+}
+
+
 %%
 
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
+    if (argc < 2) {
         printf("Please provide input file name and try again\n");
 		return 0;
     }
@@ -546,6 +587,12 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
+    printf("%d\n", argc);
+    printf("logFilename = %s\n", argv[2]);
+    printf("tokenFileName = %s\n", argv[3]);
+
+    logFileName = argv[2];
+    tokenFileName = argv[3];
     logFile = fopen(logFileName.c_str(), "w");
     tokenFile = fopen(tokenFileName.c_str(), "w");
 
@@ -562,15 +609,9 @@ int main(int argc, char *argv[]) {
     fclose(tokenFile);
 	return 0;
 
-
-// {UNRECOGNIZED_CHAR_ERR} {
-//     ERR_COUNT++;
-//     fprintf(logFile, "Error at line no %d: Unrecognized character error %s\n\n", yylineno, yytext);        
-// }
-
-
-
-
-
+//     ./lexer.out input1.txt log1.txt token1.txt
+// ./lexer.out input3.txt log3.txt token3.txt
+// ./lexer.out input4.txt log4.txt token4.txt
+// ./lexer.out input5.txt log5.txt token5.txt
 
 }

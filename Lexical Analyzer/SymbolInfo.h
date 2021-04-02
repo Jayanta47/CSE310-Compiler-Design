@@ -96,7 +96,7 @@ bool symbolInfo::equalsName(std::string Name)
 
 std::string symbolInfo::_str()
 {
-    std::string thisSymbol = "< "+ this->Name + " : " + this->Type + " > ";
+    std::string thisSymbol = "< "+ this->Name + " : " + this->Type + "> ";
     return thisSymbol;
 }
 
