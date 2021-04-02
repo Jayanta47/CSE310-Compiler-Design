@@ -226,7 +226,7 @@ void ScopeTable::Print(FILE *file)
         
         if (this->bucket[i] != nullptr)
         {
-            fprintf(file, "%d --> ", i);
+            fprintf(file, " %d --> ", i);
             symbolInfo *temp = this->bucket[i];
             while(temp != nullptr)
             {
