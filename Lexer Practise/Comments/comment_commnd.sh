@@ -1,3 +1,3 @@
 flex -o comments.c comments.l
 g++ comments.c -lfl -o comments.out
-./comments.out comments.txt
+./comments.out comments2.txt

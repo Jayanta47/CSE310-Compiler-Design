@@ -172,8 +172,11 @@ CONST_INT {DIGITS}
 /* Digit part - [digits.] , [.digits] , [digits.digits] */
 /* Exponential part - (optional) E[digits], E[+digits], E[-digits] */  
 EXPONENTIAL (Ee[-+]?{DIGITS})
-CONST_FLOAT (({ZERO_OR_MORE_DIGITS}\.{DIGITS})|{DIGITS})({EXPONENTIAL})?
-
+/*CONST_FLOAT (({ZERO_OR_MORE_DIGITS}\.{DIGITS})|{DIGITS})({EXPONENTIAL})?*/
+/*([0-9]*\.[0-9]+|[0-9]+\.)([Ee][-+]?([0-9])+)?|[0-9]+([Ee][-+]?([0-9])+)*/
+CONST_FLOAT_VAR1 ([0-9]*\.[0-9]+|[0-9]+\.)([Ee][-+]?([0-9])+)?
+CONST_FLOAT_VAR2 [0-9]+([Ee][-+]?([0-9])+)
+CONST_FLOAT ({CONST_FLOAT_VAR1}|{CONST_FLOAT_VAR2})
 /* Character Literals */
 /* There are normal characters(those within ASCII 32-126) */
 /* and within them special characters */
@@ -230,7 +233,7 @@ STRING \"({STRING_CHARS_NRML}|{NEWLINE_FOR_MUL_LINE_STRING})*\"
 
 STRING_CHARS_NRML [^\n\r\"]
 NEWLINE_FOR_MUL_LINE_STRING (\\\n|\\|\\\r\n)
-STRING \"([^\"\\\n]|\\['\"?\\abfnrtv]|\\\n|\\\r\n)*\"
+STRING \"([^\"\\\n]|\\['\"?\\abfnrtv]|\\[A-Za-z]|\\\n|\\\r\n)*\"
 
 
 /* ----------------------------------------------------------------*/
@@ -247,27 +250,27 @@ STRING \"([^\"\\\n]|\\['\"?\\abfnrtv]|\\\n|\\\r\n)*\"
 /* ----------------------------------------------------------------*/
 
 /* TOO MANY DECIMAL ERROR */
-TOO_MANY_DECIMAL_POINT_ERR {DIGITS}*\.({DIGIT}*|{DIGITS})\.({DIGIT})*
+TOO_MANY_DECIMAL_POINT_ERR [0-9]*\.[0-9]*\.[0-9\.]*
 
 /* ILL FORMED NUMBER ERROR */
-ILL_FORMED_NUM_ERR (({ZERO_OR_MORE_DIGITS}\.{DIGITS})|{DIGITS})([Ee][-+]?)({CONST_FLOAT})
+ILL_FORMED_NUM_ERR (([0-9]*\.[0-9]*)|[0-9]+)([Ee][-+]?([0-9])*\.[0-9\.]*)
 
 /* VARIABLE NAMING ERROR */
 INVALID_PREF_SUF_ERR {DIGIT}[a-zA-Z0-9_]*
 
 /* MULTI CHARACTER CONSTANT ERROR */
-MULTI_CHAR_ERR '({NORMAL_CHARACTERS}|{SPECIAL_CHARACTERS})({NORMAL_CHARACTERS}|{SPECIAL_CHARACTERS})+'
+MULTI_CHAR_ERR '({NORMAL_CHARACTERS}|{SPECIAL_CHARACTERS})([ -~]{-}[\'])+'
 
 /* EMPTY CHARACTER CONSTANT ERROR */
 EMPTY_CHAR_ERR '({WHITESPACE})*'
 
 /* UNFINISHED CHARACTER ERROR */
-RIGHT_APS_MISSING_IN_CHAR '({NORMAL_CHARACTERS}|{SPECIAL_CHARACTERS})*
+RIGHT_APS_MISSING_IN_CHAR '({NORMAL_CHARACTERS}|(\\[nt\\afrbv0\"]))*
 SINGLE_FORWARD_SLASH_IN_CHAR '[\\]'
-UNFINISHER_CHAR_ERR ({RIGHT_APS_MISSING_IN_CHAR}|{SINGLE_FORWARD_SLASH_IN_CHAR})
+UNFINISHER_CHAR_ERR ({RIGHT_APS_MISSING_IN_CHAR}|{SINGLE_FORWARD_SLASH_IN_CHAR}|("'\\"))
 
 
-UNFINISHED_STRING_ERR \"([^\"\\\n\r]|\\\r\n|\\\n)*(\n|\r\n)
+UNFINISHED_STRING_ERR \"([^\"\\\n]|\\['\"?\\abfnrtv]|\\[A-Za-z]|\\\n|\\\r\n)*(\n|\r\n)
 
 /* UNRECOGNIZED CHARACTER ERROR */
 UNRECOGNIZED_CHAR_ERR .
@@ -289,10 +292,16 @@ UNRECOGNIZED_CHAR_ERR .
     //fprintf(logFile, "*/ found\n\n");
 }
 
-<COMMENT>([^*]|\*[^\/])* {
+<COMMENT>([^\*])* {
     std::string str(yytext);
     commentStr+=str;
 }
+
+<COMMENT>\*/[^\/] {
+    std::string str(yytext);
+    commentStr+=str;
+}
+
 
 <COMMENT><<EOF>> {
     fprintf(logFile, "Error at line no %d: Unterminated Comment /*%s*/\n\n", tempCommentLineCnt, commentStr.c_str()); 
@@ -308,13 +317,13 @@ UNRECOGNIZED_CHAR_ERR .
     //fprintf(logFile, "Line no %d: Token <COMMENT> Lexeme %s", yylineno, yytext);
 }
 
-<SINGLECOMMENT>(\n) {
+<SINGLECOMMENT>(\n|\r\n) {
     BEGIN(INITIAL);
     fprintf(logFile, "Line no %d: Token <COMMENT> Lexeme //%s found\n\n", tempCommentLineCnt, commentStr.c_str());
     commentStr = "";
 }
 
-<SINGLECOMMENT>([^\n\\\r]|(\\\n)|(\\\r\n))* {
+<SINGLECOMMENT>([^\n\\\r]|(\\\n)|(\\\r\n)|\\[^\n\r])* {
     std::string str(yytext);
     commentStr+=str;
 }
@@ -502,7 +511,7 @@ UNRECOGNIZED_CHAR_ERR .
 }
 
 {STRING} {
-    printf("String found %s\n", yytext);
+    //printf("String found %s\n", yytext);
     std::string s(yytext);
     int newLineCntr = 0;
     for(int i = 0; i < s.size(); i++)
