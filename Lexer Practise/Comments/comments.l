@@ -9,6 +9,8 @@
 #include<iostream>
 #include<cstdlib>
 
+std::string comnt = "";
+
 %}
 
 ALPHANUMERIC [a-zA-Z0-9]
@@ -17,17 +19,18 @@ WHITESPACE [ \t\f\r\v]+
 %%
 
 "/*" {BEGIN(COMMENT);
-	printf("Comment started at %s, line %d\n", yytext, yylineno);}
+	printf("Comment started at %s, line %d\n", yytext, yylineno);comnt = "";}
 "//" {BEGIN(SINGLECOMMENT);
 	printf("Single comment started at %s, line %d\n", yytext, yylineno);}
-<SINGLECOMMENT>([^\n]|(\\\n))* {printf("single comment: %s\n", yytext); }
-<SINGLECOMMENT>(\n) {BEGIN(INITIAL);printf("return to initial\n");}
-<COMMENT>"*/" {BEGIN(INITIAL); printf("return to initial\n");}
+<SINGLECOMMENT>([^\n\\\r]|(\\\n)|(\\\r\n)|\\[^\n\r])* {printf("single comment: %s\n", yytext); }
+<SINGLECOMMENT>(\n|\r\n) {BEGIN(INITIAL);printf("return to initial\n");}
+<COMMENT>"*/" {BEGIN(INITIAL); 
+printf("%s\n", comnt.c_str());
+printf("return to initial\n");}
 
-<COMMENT>([^*]|\*[^\/])* {printf("comment: %s\n", yytext);}
-<COMMENT>\n {} 
-(\n) {}
-([^\/\*]|[^\/]+\*[ -~]?)* {printf("Initial: %s\n", yytext);}
+<COMMENT>([^\*\/])* {std::string s(yytext); comnt+=s;}
+<COMMENT>\*/[^\/] {std::string s(yytext); comnt+=s;}
+
 <COMMENT><<EOF>> {printf("Unterminated Comment\n"); return 0;}
 
 
