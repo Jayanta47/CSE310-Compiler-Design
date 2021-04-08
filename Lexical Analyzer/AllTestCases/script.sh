@@ -1,6 +1,6 @@
 for file in ./*.txt;
 do 
-./submitLexer.out ${file}
+./lexer.out ${file}
 python3 pythonScript.py ${file}
 done;
 
