@@ -1,15 +1,28 @@
 #ifndef SYMBOL_INFO_H
 #include<string>
+#include<vector>
+struct functionInfo
+{
+    std::string returnType;
+    int n_params;
+    std::vector<std::string>param_list;
+};
 
 class symbolInfo
 {
     std::string Name;
     std::string Type;
+    std::string var_type;
+    std::string id_type;
+    int arrSize = 0;
+    functionInfo *funcPtr;
     symbolInfo *next;
     symbolInfo *prev;
 public:
+    int arrIndex = 0;
     symbolInfo();
     symbolInfo(std::string Name, std::string Type);
+    symbolInfo(std::string Type);
     symbolInfo(std::string Name, std::string Type, symbolInfo *next, symbolInfo *prev);
     ~symbolInfo();
 
@@ -17,6 +30,14 @@ public:
     void setName(std::string newName);
     std::string getType();
     void setType(std::string newType);
+    std::string getIdType();
+    void setIdType(std::string idType);
+    std::string getVarType();
+    void setVarType(std::string varType);
+    void setArrSize(int size);
+    int getArrSize() {return this->arrSize;}
+    void setFunctionInfo(functionInfo *funcPtr) {this->funcPtr = funcPtr;}
+    functionInfo *getFunctionInfo() {return this->funcPtr;}
     symbolInfo *getNext();
     void setNext(symbolInfo *newNext);
     symbolInfo *getPrev();
@@ -49,6 +70,15 @@ symbolInfo::symbolInfo(std::string Name, std::string Type, symbolInfo *next, sym
     this->prev = prev;
 }
 
+
+symbolInfo::symbolInfo(std::string Type)
+{
+    this->Name = "";
+    this->Type = Type;
+    this->next = nullptr;
+    this->prev = nullptr;
+}
+
 std::string symbolInfo::getName()
 {
     return this->Name;
@@ -67,6 +97,31 @@ std::string symbolInfo::getType()
 void symbolInfo::setType(std::string newType)
 {
     this->Type = newType;
+}
+
+std::string symbolInfo::getIdType() 
+{
+    return this->id_type;
+}
+
+void symbolInfo::setIdType(std::string idType)
+{
+    this->id_type = id_type;
+}
+
+std::string symbolInfo::getVarType() 
+{
+    return this->var_type;
+}
+
+void symbolInfo::setVarType(std::string varType)
+{
+    this->var_type = varType;
+}
+
+void symbolInfo::setArrSize(int size)
+{
+    this->arrSize = size;
 }
 
 symbolInfo *symbolInfo::getNext()

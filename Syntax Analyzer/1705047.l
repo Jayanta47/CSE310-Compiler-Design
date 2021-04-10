@@ -68,7 +68,7 @@ void StringUtil(std::string s) {
 
     printf("%s\n", str.c_str());
 
-    SymbolInfo *si = new SymbolInfo(str.c_str(), "STRING");
+    symbolInfo *si = new symbolInfo(str.c_str(), "STRING");
     yylval.symbol = si;
 }
 
@@ -119,7 +119,7 @@ void processConstChar(std::string str) {
 
     }
     else return;
-    SymbolInfo *si = new SymbolInfo(ch, "CONST_CHAR");
+    symbolInfo *si = new symbolInfo(ch, "CONST_CHAR");
     yylval.symbol = si;
 } 
 
@@ -155,6 +155,7 @@ SWITCH "switch"
 CASE "case"
 DEFAULT "default"
 CONTINUE "continue" 
+PRINTLN "println"
 
 /* ----------------------------------------------------------------*/
 
@@ -368,32 +369,34 @@ UNRECOGNIZED_CHAR_ERR .
 
 {SEMICOLON} {return SEMICOLON;}
 
+{PRINTLN} {return PRINTLN;}
+
 {INCOP} {
-    SymbolInfo *si = new SymbolInfo(yytext, "INCOP");
+    symbolInfo *si = new symbolInfo(yytext, "INCOP");
     yylval.symbol = si;
     return INCOP;
 }
 
 {ADDOP} {
-    SymbolInfo *si = new SymbolInfo(yytext, "ADDOP");
+    symbolInfo *si = new symbolInfo(yytext, "ADDOP");
     yylval.symbol = si;
     return ADDOP;  
 }
 
 {MULOP} {
-    SymbolInfo *si = new SymbolInfo(yytext, "MULOP");
+    symbolInfo *si = new symbolInfo(yytext, "MULOP");
     yylval.symbol = si;
     return MULOP;
 }
 
 {RELOP} {
-    SymbolInfo *si = new SymbolInfo(yytext, "RELOP");
+    symbolInfo *si = new symbolInfo(yytext, "RELOP");
     yylval.symbol = si;
     return RELOP;
 }
 
 {LOGICOP} {
-    SymbolInfo *si = new SymbolInfo(yytext, "LOGICOP");
+    symbolInfo *si = new symbolInfo(yytext, "LOGICOP");
     yylval.symbol = si;
     return LOGICOP;
 }
@@ -403,13 +406,13 @@ UNRECOGNIZED_CHAR_ERR .
 {NOT} {return NOT;}
 
 {CONST_INT} {
-    SymbolInfo *si = new SymbolInfo(yytext, "CONST_INT");
+    symbolInfo *si = new symbolInfo(yytext, "CONST_INT");
     yylval.symbol = si;
     return CONST_INT;
 }
 
 {CONST_FLOAT} {
-    SymbolInfo *si = new SymbolInfo(yytext, "CONST_FLOAT");
+    symbolInfo *si = new symbolInfo(yytext, "CONST_FLOAT");
     yylval.symbol = si;
     return CONST_FLOAT;    
 }
@@ -420,7 +423,7 @@ UNRECOGNIZED_CHAR_ERR .
 }
 
 {IDENTIFIER} {
-    SymbolInfo *si = new SymbolInfo(yytext, "ID");
+    symbolInfo *si = new symbolInfo(yytext, "ID");
     yylval.symbol = si;
     return ID;
 }

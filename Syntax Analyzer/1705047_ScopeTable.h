@@ -34,6 +34,7 @@ public:
     int getNextScopeNum();
 
     bool Insert(std::string Name, std::string Type);
+    bool Insert(symbolInfo *item);
     symbolInfo *LookUp(std::string Name);
     bool Delete(std::string Name);
     void Print(FILE *file);
@@ -126,6 +127,36 @@ int ScopeTable::hashIndex(std::string Name)
     return hash_index%this->n_buckets;
 }
 
+bool ScopeTable::Insert(symbolInfo *item)
+{
+    symbolInfo *returnPtr = this->LookUp(item->getName());
+    if (returnPtr != nullptr)
+    {
+        return false;
+    }
+
+    int index = this->hashIndex(item->getName());
+    int pos = 0;
+
+    if (this->bucket[index] != nullptr)
+    {
+        symbolInfo *temp = this->bucket[index];
+        while(temp->getNext() != nullptr)
+        {
+            temp = temp->getNext();
+            pos++;
+        }
+        temp->setNext(item);
+        item->setPrev(temp);
+        pos++;
+    }
+    else
+    {
+        this->bucket[index] = item;
+    }
+
+    return true;
+}
 
 bool ScopeTable::Insert(std::string Name, std::string Type)
 {
