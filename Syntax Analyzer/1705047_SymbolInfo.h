@@ -19,7 +19,7 @@ class symbolInfo
     std::string Type;
     std::string var_type; // the type of variable (to be returned|currently in hold)
     std::string id_type;
-    int arrSize = 0;
+    int arrSize = -1;
     functionInfo *funcPtr;
     symbolInfo *next;
     symbolInfo *prev;

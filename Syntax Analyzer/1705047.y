@@ -20,10 +20,17 @@ extern FILE *yyin;
 FILE *logFile;
 FILE *errorFile;
 
+
+// containers and structures
 std::string code_segm;
 vector<string> code_vect;
-vecotr<symbolInfo*> arg_vect;
+vector<symbolInfo*> arg_vect;
 SymbolTable *table;
+
+// auxilliary variables
+std::string type, final_type;
+std::string name, final_name;
+std::string return_type;
 
 
 void yyerror(char *s)
@@ -136,6 +143,9 @@ func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON
 		}
 	}
 	| type_specifier ID LPAREN RPAREN SEMICOLON
+	{
+		// to be done
+	}
 	;
 		 
 func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statement
@@ -262,21 +272,31 @@ statement : var_declaration
 	}
 	| RETURN expression SEMICOLON
 	{
-		fprintf(logFile, "At line no : %d statement : PRINTLN LPAREN ID RPAREN SEMICOLON\n\n", lineCnt);
-		std::string statementC = "println("+$3->getName()+")"+";";
+		fprintf(logFile, "At line no : %d statement : RETURN expression SEMICOLON\n\n", lineCnt);
+		std::string statementC = "return "+$2->getName()+";";
 		fprintf(logFile, "%s\n\n", statementC.c_str());
 		symbolInfo *si = new symbolInfo(statementC, "statement");
 		$$=si;
+
+		if ($2->getVarType() == "void")
+		{
+			/* function cannot be called in expression */
+			fprintf(errorFile, "Line no %d : void function call within expression\n\n", lineCnt);
+			SMNTC_ERR_COUNT++;
+		}
+
+		return_type = $2->getVarType();
 	}
 	;
 	  
-expression_statement 	: SEMICOLON			
+expression_statement : SEMICOLON			
 	{
 		fprintf(logFile, "At line no : %d expression_statement : SEMICOLON\n\n", lineCnt);
 		fprintf(logFile, ";\n\n");
 
 		symbolInfo *si = new symbolInfo(";", "expression_statement");
 		$$ = si;
+		//type = "int";
 	}
 	| expression SEMICOLON
 	{
@@ -285,6 +305,7 @@ expression_statement 	: SEMICOLON
 		symbolInfo *si = new symbolInfo($1->getName() + ";", "expression_statement");
 		si->setVarType($1->getVarType());
 		$$=si;
+		//type = "int";
 	} 
 	;
 	  
@@ -296,14 +317,21 @@ variable : ID
 		$$ = $1;
 		$$->setIDType("variable");
 		// check if this variable already exists in symbol table
-		symbolInfo *si = table->LookUp($$->getName());
-		if (si) 
+		symbolInfo *x = table->LookUp($$->getName());
+		if (x) 
 		{
-			$$->setVarType($1->getVarType()); // variable declaration is okay
+			$$->setVarType(x->getVarType()); // variable declaration is okay
 		}
 		else 
 		{
-			fprintf(errorFile, "Line no %d : undeclared variable name");
+			fprintf(errorFile, "Line no %d : undeclared variable\n\n". lineCnt);
+			SMNTC_ERR_COUNT++;
+			$$->setVarType("int");
+		}
+
+		if (x != nullptr && x->getArrSize()!=-1)
+		{
+			fprintf(errorFile, "Line no %d : type mismatch for variable\n\n". lineCnt);
 			SMNTC_ERR_COUNT++;
 		}
 	}
@@ -312,12 +340,21 @@ variable : ID
 		fprintf(logFile, "At line no : %d variable : ID LTHIRD expression RTHIRD\n\n", lineCnt);
 		fprintf(logFile, "%s[%s]\n\n", $1->getName().c_str(), $3->getName().c_str());
 
-		//check if expression is int
+		//check if expression(index) is int
 		if ($3->getVarType() != "int")
 		{
 			SMNTC_ERR_COUNT++;
 			fprintf(errorFile, "Line no %d : Invalid datatype for index\n\n");
 		}
+
+		// check if expression is calling void function
+		if ($3->getVarType() == "void")
+		{
+			/* function cannot be called in expression */
+			fprintf(errorFile, "Line no %d : void function call within expression\n\n", lineCnt);
+			SMNTC_ERR_COUNT++;
+		}
+
 		symbolInfo *si = new symbolInfo(
 			$1->getName() + "[" + $3->getName() + "]",
 			"variable"
@@ -327,6 +364,12 @@ variable : ID
 		symbolInfo *sts = table->LookUp($1->getName());
 		if (sts == nullptr) {
 			fprintf(errorFile, "Line no %d : Variable not declared\n\n");
+			SMNTC_ERR_COUNT++;
+			si->setVarType("int");
+		}
+		else if (sts->getIdType() != "array" || sts->getArrSize() == -1) // checking if array or not
+		{
+			fprintf(errorFile, "Line no %d : type mismatch(not array)\n\n", lineCnt);
 			SMNTC_ERR_COUNT++;
 		}
 		else 
@@ -338,7 +381,7 @@ variable : ID
 				SMNTC_ERR_COUNT++;
 				fprintf(errorFile, "Line no %d : Array index out of bound\n\n");
 			}
-			si->arrIndex = index;
+			else si->arrIndex = index;
 			si->setArrSize(sts->getArrSize());
 		}
 		$$=si;
@@ -351,10 +394,36 @@ variable : ID
 			fprintf(logFile, "At line no : %d expression : logic_expression\n\n", lineCnt);
 			fprintf(logFile, "%s\n\n", $1->getName().c_str());
 			$$=$1;
+			$$->setType("expression");
 		}
 	   | variable ASSIGNOP logic_expression
 	   {
-		   
+		   	fprintf(logFile, "At line no : %d expression : variable ASSIGNOP logic_expression\n\n", lineCnt);
+			fprintf(logFile, "%s = %s\n\n", $1->getName().c_str(), $3->getName().c_str());
+			if ($3->getVarType() == "void")
+			{
+				/* function cannot be called in expression */
+				fprintf(errorFile, "Line no %d : void function call within expression\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+				$3->setType("int");
+			}
+			if ($1->getVarType() != $3->getVarType()) {
+				fprintf(errorFile, "Line no %d : type mismatch in assignment\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+			}
+
+
+			$$ = new symbolInfo($1->getName() + "=" + $3->getName(), "expression");
+			symbolInfo *x = table->Lookup($1->getName());
+			if (x==nullptr) {
+				fprintf(errorFile, "Line no %d : Variable not declared in this scope\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+				$$->setVarType("int");
+			}
+			else {
+				$$->setVarType(x->getVarType());
+			}
+			type = $1->getVarType();
 	   } 	
 	   ;
 			
@@ -363,6 +432,7 @@ logic_expression : rel_expression
 			fprintf(logFile, "At line no : %d logic_expression : rel_expression\n\n", lineCnt);
 			fprintf(logFile, "%s\n\n", $1->getName().c_str());
 			$$=$1;
+			$$->setType("logic_expression");
 		}
 		| rel_expression LOGICOP rel_expression 	
 		{
@@ -370,7 +440,21 @@ logic_expression : rel_expression
 			fprintf(logFile, "%s%s%s\n\n", $1->getName().c_str(),
 					$2->getName().c_str(), $3->getName().c_str());
 			
-			if ($1->getName() != "int" || $3->getName() != "int")
+			/* type check */
+			if ($1->getVarType() == "void")
+			{
+				/* function cannot be called in expression */
+				fprintf(errorFile, "Line no %d : void function call within expression\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+			}
+			if ($3->getVarType() == "void")
+			{
+				/* function cannot be called in expression */
+				fprintf(errorFile, "Line no %d : void function call within expression\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+			}
+			/* Not exactly necessary, because rel_expression is set to int in shifting procedure */
+			if ($1->getVarType() != "int" || $3->getVarType() != "int")
 			{
 				SMNTC_ERR_COUNT++;
 				fprintf(errorFile, "Line no %d : Type mismatch for relational operator\n\n", lineCnt);
@@ -389,6 +473,7 @@ rel_expression	: simple_expression
 			fprintf(logFile, "At line no : %d rel_expression : simple_expression\n\n", lineCnt);
 			fprintf(logFile, "%s\n\n", $1->getName().c_str());
 			$$=$1;
+			$$->setType("rel_expression");
 		}
 		| simple_expression RELOP simple_expression
 		{
@@ -396,6 +481,21 @@ rel_expression	: simple_expression
 			fprintf(logFile, "%s%s%s\n\n", $1->getName().c_str(),
 					$2->getName().c_str(),
 					$3->getName().c_str());
+
+			/* checking function call */
+			if ($1->getVarType() == "void")
+			{
+				/* function cannot be called in expression */
+				fprintf(errorFile, "Line no %d : void function call within expression\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+			}
+			if ($3->getVarType() == "void")
+			{
+				/* function cannot be called in expression */
+				fprintf(errorFile, "Line no %d : void function call within expression\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+			}
+
 			if ($1->getVarType() != "int" || $3->getVarType() != "int") 
 			{
 				SMNTC_ERR_COUNT++;
@@ -415,6 +515,7 @@ simple_expression : term
 			fprintf(logFile, "At line no : %d simple_expression : term\n\n", lineCnt);
 			fprintf(logFile, "%s\n\n", $1->getName().c_str());
 			$$=$1;
+			$$->setType("simple_expression");
 		}
 		| simple_expression ADDOP term 
 		{
@@ -427,6 +528,23 @@ simple_expression : term
 				"simple_expression";
 			);
 			$$=si;
+			
+			/* type check */
+			if ($1->getVarType() == "void")
+			{
+				/* function cannot be called in expression */
+				fprintf(errorFile, "Line no %d : void function call within expression\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+				$1->setVarType("int");
+			}
+			if ($3->getVarType() == "void")
+			{
+				/* function cannot be called in expression */
+				fprintf(errorFile, "Line no %d : void function call within expression\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+				$3->setVarType("int");
+			}
+
 			if ($1->getVarType() == "float" || $3->getVarType() == "float")
 			{
 				$$->setVarType("float");
@@ -440,6 +558,7 @@ term :	unary_expression
 			fprintf(logFile, "At line no : %d term : unary_expression\n\n", lineCnt);
 			fprintf(logFile, "%s\n\n", $1->getName().c_str());
 			$$=$1;
+			$$->setType("term");
 		}
 		|  term MULOP unary_expression
 		{
@@ -451,6 +570,21 @@ term :	unary_expression
 			);
 			$$=si;
 			// checking for MULOP(%) mismatch
+			if ($1->getVarType() == "void")
+			{
+				/* function cannot be called in expression */
+				fprintf(errorFile, "Line no %d : void function call within expression\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+				$1->setVarType("int");
+			}
+			if ($3->getVarType() == "void")
+			{
+				/* function cannot be called in expression */
+				fprintf(errorFile, "Line no %d : void function call within expression\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+				$3->setVarType("int");
+			}
+			
 			if ($2->getName() == "%") 
 			{
 				$$->setVarType("int");
@@ -476,7 +610,16 @@ unary_expression : ADDOP unary_expression
 			fprintf(logFile, "At line no : %d unary_expression : ADDOP unary_expression\n\n", lineCnt);
 			fprintf(logFile, "%s%s\n\n", $1->getName().c_str(), $2->getName().c_str());
 			symbolInfo *si = new symbolInfo($1->getName()+$2->getName(), "unary_expression");
-			si->setVarType($2->getVarType());
+			if ($2->getVarType() == "void")
+			{
+				/* function cannot be called in expression */
+				fprintf(errorFile, "Line no %d : void function call inside expression\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+				si->setVarType("int");
+			}
+			else {
+				si->setVarType($2->getVarType());
+			}
 			$$=si;
 		}
 		| NOT unary_expression 
@@ -484,7 +627,16 @@ unary_expression : ADDOP unary_expression
 			fprintf(logFile, "At line no : %d unary_expression : NOT unary_expression\n\n", lineCnt);
 			fprintf(logFile, "!%s\n\n", $2->getName().c_str());
 			symbolInfo *si = new symbolInfo("!"+$2->getName(), "unary_expression");
-			si->setVarType($2->getVarType());
+			if ($2->getVarType() == "void")
+			{
+				/* function cannot be called in expression */
+				fprintf(errorFile, "Line no %d : void function call inside expression\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+				si->setVarType("int");
+			}
+			else {
+				si->setVarType($2->getVarType());
+			}
 			$$=si;
 		}
 		| factor 
@@ -492,6 +644,7 @@ unary_expression : ADDOP unary_expression
 			fprintf(logFile, "At line no : %d unary_expression : factor\n\n", lineCnt);
 			fprintf(logFile, "%s\n\n", $1->getName().c_str());
 			$$=$1;
+			$$->setType("unary_expression");
 		}
 		;
 	
