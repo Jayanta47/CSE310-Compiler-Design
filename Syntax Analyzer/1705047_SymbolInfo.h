@@ -10,7 +10,6 @@ struct param {
 struct functionInfo
 {
     std::string returnType;
-    int n_params;
     std::vector<param*> param_list;
 };
 
@@ -18,7 +17,7 @@ class symbolInfo
 {
     std::string Name;
     std::string Type;
-    std::string var_type;
+    std::string var_type; // the type of variable (to be returned|currently in hold)
     std::string id_type;
     int arrSize = 0;
     functionInfo *funcPtr;
@@ -44,6 +43,18 @@ public:
     int getArrSize() {return this->arrSize;}
     void setFunctionInfo(functionInfo *funcPtr) {this->funcPtr = funcPtr;}
     functionInfo *getFunctionInfo() {return this->funcPtr;}
+    int getParamSize()
+    {
+        return (this->funcPtr != nullptr)?this->funcPtr->param_list.size():0;
+    }
+    void addParam(std::string param_name, std::string param_type)
+    {
+        param *temp = new param;
+        temp->param_name = param_name;
+        temp->param_type = param_type;
+        if(this->funcPtr!=nullptr){this->funcPtr->param_list.push_back(temp);}
+    }
+    param *getParamAt(int index) const {return this->funcPtr->param_list[index];}
     symbolInfo *getNext();
     void setNext(symbolInfo *newNext);
     symbolInfo *getPrev();

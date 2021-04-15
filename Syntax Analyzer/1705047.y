@@ -22,6 +22,7 @@ FILE *errorFile;
 
 std::string code_segm;
 vector<string> code_vect;
+vecotr<symbolInfo*> arg_vect;
 SymbolTable *table;
 
 
@@ -492,20 +493,71 @@ unary_expression : ADDOP unary_expression
 			fprintf(logFile, "%s\n\n", $1->getName().c_str());
 			$$=$1;
 		}
-		 ;
+		;
 	
 factor	: variable 
 	{
 		fprintf(logFile, "At line no : %d factor : variable\n\n", lineCnt);
 		fprintf(logFile, "%s\n\n", $1->getName().c_str());
 		$$=$1;
+		$$->setType("factor");
 	}
 	| ID LPAREN argument_list RPAREN
 	{
 		fprintf(logFile, "At line no : %d factor : ID LPAREN argument_list RPAREN\n\n", lineCnt);
 		fprintf(logFile, "%s(%s)\n\n", $1->getName().c_str(), $3->getName().c_str());
-		/* unfinished - check if function and arguments list match
+		/* unfinished - check if function and arguments list match*/
+		$$ = new symbolInfo($1->getName() + "(" + $3->getName() + ")", "factor");
+		symbolInfo *x = table->LookUp($1->getName());
 
+		/* Check if the function name exists*/
+		if (x == nullptr) {
+			fprintf(errorFile, "Line no %d : no identifier found\n\n", lineCnt);
+			SMNTC_ERR_COUNT++;
+			$$->setVarType("int");
+		}
+		else if (x->getType() != "func_declaration" || x->getType() != "func_declaration"|| x->funcPtr == nullptr)
+		{
+			fprintf(errorFile, "Line no %d : function not declared or defined \n\n", lineCnt);
+			SMNTC_ERR_COUNT++;
+			$$->setVarType("int");
+		}
+		else 
+		{ 
+			/* match argument with param list */
+			if(1) // if function doesnt have any parameter
+			{
+
+			}
+			else if (x->getParamSize() != arg_vect.size()) 
+			{
+				// parameter size does not match
+				fprintf(errorFile, "Line no %d : parameter and argument size does not match\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+				$$->setVarType("int");
+			}
+			else
+			{
+				// check every parameter type
+				int i;
+				for(i = 0; i<arg_vect.size();i++)
+				{
+					if (x->getParamAt(i)->param_type != arg_vect[i]->getVarType())
+					{
+						fprintf(errorFile, "Line no %d : parameter and argument type does not match\n\n", lineCnt);
+						SMNTC_ERR_COUNT++;
+						$$->setVarType("int");
+						break;
+					}
+				}
+				if (i==arg_vect.size())
+				{
+					$$->setVarType(x->getVarType());
+				}
+			}
+			
+		}
+		arg_vect.clear();
 	}
 	| LPAREN expression RPAREN
 	{
@@ -532,10 +584,16 @@ factor	: variable
 	| variable INCOP 
 	{
 		fprintf(logFile, "At line no : %d factor : variable INCOP\n\n", lineCnt);
-		fprintf(logFile, "%s%s\n\n", $1->getName().c_str(), $2->getName().c_str());
-		symbolInfo *si = new symbolInfo($1->getName()+$2->getName(), "factor");
-		$$=si;
-		$$->setVarType($1->getVarType());
+		fprintf(logFile, "%s++\n\n", $1->getName().c_str());
+		$$ = new symbolInfo($1->getName()+"++", "factor");
+		$$->setVarType($1->getVarType()); /* type setting */
+	}
+	| variable DECOP 
+	{
+		fprintf(logFile, "At line no : %d factor : variable DECOP\n\n", lineCnt);
+		fprintf(logFile, "%s--\n\n", $1->getName().c_str());
+		$$ = new symbolInfo($1->getName()+"--", "factor");
+		$$->setVarType($1->getVarType()); /* type setting */
 	}
 	;
 	
@@ -548,6 +606,8 @@ argument_list : arguments
 		}
 		|
 		{
+			fprintf(logFile, "At line no : %d argument_list : <epsilon>\n\n", lineCnt);
+			fprintf(logFile, "\n\n");
 			symbolInfo *si = new symbolInfo("", "argument_list");
 			$$=si;
 		}
@@ -558,6 +618,12 @@ arguments : arguments COMMA logic_expression
 			fprintf(logFile, "At line no : %d arguments : arguments COMMA logic_expression\n\n", lineCnt);
 			fprintf(logFile, "%s,%s\n\n", $1->getName().c_str(), $3->getName().c_str());
 			symbolInfo *si = new symbolInfo($1->getName()+","+$3->getName(), "arguments");
+			if ($1->getVarType() == "void")
+			{
+				fprintf(errorFile, "Line no %d : void function called in argument of function\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+				$1->setVarType("int");
+			}
 			$$ = si;
 			arg_vect.push_back($3);
 		}
@@ -565,8 +631,15 @@ arguments : arguments COMMA logic_expression
 		{
 			fprintf(logFile, "At line no : %d arguments : logic_expression\n\n", lineCnt);
 			fprintf(logFile, "%s\n\n", $1->getName().c_str());
-			$$=$1;
+			$$=new symbolInfo($1->getname(), "arguments");
+			if ($1->getVarType() == "void")
+			{
+				fprintf(errorFile, "Line no %d : void function called in argument of function\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+				$1->setVarType("int");
+			}
 			
+			$$->setType("arguments");
 			arg_vect.push_back($1);
 		}
 		;
