@@ -1,11 +1,17 @@
 #ifndef SYMBOL_INFO_H
 #include<string>
 #include<vector>
+
+struct param {
+    std::string param_type;
+    std::string param_name;
+};
+
 struct functionInfo
 {
     std::string returnType;
     int n_params;
-    std::vector<std::string>param_list;
+    std::vector<param*> param_list;
 };
 
 class symbolInfo

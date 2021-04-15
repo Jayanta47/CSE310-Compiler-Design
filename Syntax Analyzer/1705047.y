@@ -39,7 +39,7 @@ void yyerror(char *s)
 	symbolInfo *symbol;
 }
 
-%token IF ELSE FOR WHILE DO BREAK INT CHAR FLOAT DOUBLE VOID RETURN SWITCH CASE DEFAULT CONTINUE ASSIGNOP LPAREN RPAREN LCURL RCURL LTHIRD RTHID COMMA SEMICOLON NOT PRINTLN
+%token IF ELSE FOR WHILE DO BREAK INT CHAR FLOAT DOUBLE VOID RETURN SWITCH CASE DEFAULT CONTINUE ASSIGNOP LPAREN RPAREN LCURL RCURL LTHIRD RTHID COMMA SEMICOLON NOT PRINTLN INCOP DECOP
 %token<symbol>CONST_INT
 %token<symbol>CONST_FLOAT
 %token<symbol>CONST_CHAR
@@ -48,7 +48,6 @@ void yyerror(char *s)
 %token<symbol>MULOP
 %token<symbol>RELOP
 %token<symbol>LOGICOP
-%token<symbol>INCOP
 %token<symbol>STRING
 
 %type<symbol>unit func_declaration func_definition parameter_list compound_statement var_declaration
@@ -151,8 +150,12 @@ parameter_list  : parameter_list COMMA type_specifier ID
 
  		
 compound_statement : LCURL statements RCURL
- 		    | LCURL RCURL
- 		    ;
+		{
+			fprintf(logFile, "At line no %d : compound_statement : LCURL statements RCURL\n\n", lineCnt);
+
+		}
+		| LCURL RCURL
+		;
  		    
 var_declaration : type_specifier declaration_list SEMICOLON
  		 ;
@@ -563,6 +566,7 @@ arguments : arguments COMMA logic_expression
 			fprintf(logFile, "At line no : %d arguments : logic_expression\n\n", lineCnt);
 			fprintf(logFile, "%s\n\n", $1->getName().c_str());
 			$$=$1;
+			
 			arg_vect.push_back($1);
 		}
 		;

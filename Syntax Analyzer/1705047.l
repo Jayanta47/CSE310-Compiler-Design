@@ -196,7 +196,8 @@ CONST_CHAR ('{NORMAL_CHARACTERS}'|'{SPECIAL_CHARACTERS}')
 
 ADDOP [-+]
 MULOP [*/%]
-INCOP ("++"|"--")
+INCOP "++"
+DECOP "--"
 RELOP ("<"|"<="|">"|">="|"=="|"!=")
 ASSIGNOP ("=")
 LOGICOP ("&&"|"||")
@@ -372,9 +373,11 @@ UNRECOGNIZED_CHAR_ERR .
 {PRINTLN} {return PRINTLN;}
 
 {INCOP} {
-    symbolInfo *si = new symbolInfo(yytext, "INCOP");
-    yylval.symbol = si;
     return INCOP;
+}
+
+{DECOP} {
+    return DECOP;
 }
 
 {ADDOP} {
