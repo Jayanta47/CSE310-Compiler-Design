@@ -40,6 +40,18 @@ std::string type, final_type;
 std::string name, final_name;
 std::string return_type;
 
+// defined functions
+void insertVarIntoTable(std::string type, std::string varType, variableInfo *vp)
+{
+	symbolInfo *si = new symbolInfo(vp->var_name, type);
+	si->setVarType(varType);
+	int varSize = atoi(vp->var_size.c_str());
+	si->setArrSize(varSize);
+	if (varSize == -1) {si->setIDType("variable");}
+	else si->setIDType("array");
+	table->Insert(si);
+}
+
 
 void yyerror(char *s)
 {
@@ -177,33 +189,48 @@ compound_statement : LCURL statements RCURL
 		;
  		    
 var_declaration : type_specifier declaration_list SEMICOLON
- 		 ;
+	{
+		fprintf(logFile, "At line no %d : var_declaration : type_specifier declaration_list SEMICOLON\n\n", lineCnt);
+		fprintf(logFile, "%s %s;\n\n", $1->getName().c_str(), $2->getName().c_str());
+		symbolInfo *si =  new symbolInfo($1->getName()+" "+$2->getName()+";", "var_declaration");
+		$$=si;
+		std::string varType = $1->getName();
+		if ($1->getType() == "VOID") 
+		{
+			fprintf(errorFile, "Line no %d : Multiple declaration of variable\n\n", lineCnt);
+			SMNTC_ERR_COUNT++;
+			varType = "int"; // default var type int
+		}
+		for ( int i=0; i<var_vect.size(); i++) 
+		{
+			insertVarIntoTable($1->getType(), varType, var_vect[i]);
+		} 
+		var_vect.clear();
+	}
+	;
  		 
-type_specifier	: INT
-		{
-			fprintf(logFile, "At line no : %d type_specifier : INT\n\n", lineCnt);
-
-			symbolInfo *type = new symbolInfo("int");
-			$$ = type;
-			fprintf(logFile, "int\n\n"); 
-		}
- 		| FLOAT
-		{
-			fprintf(logFile, "At line no : %d type_specifier : FLOAT\n\n", lineCnt);
-
-			symbolInfo *type = new symbolInfo("float");
-			$$ = type;
-			fprintf(logFile, "float\n\n");
-		}
- 		| VOID
-		{
-			fprintf(logFile, "At line no : %d type_specifier : VOID\n\n", lineCnt);
-
-			symbolInfo *type = new symbolInfo("void");
-			$$ = type;
-			fprintf(logFile, "void\n\n");
-		}
- 		;
+type_specifier : INT
+	{
+		fprintf(logFile, "At line no : %d type_specifier : INT\n\n", lineCnt);
+		fprintf(logFile, "int\n\n"); 
+		symbolInfo *type = new symbolInfo("int", "INT");
+		$$ = type;
+	}
+	| FLOAT
+	{
+		fprintf(logFile, "At line no : %d type_specifier : FLOAT\n\n", lineCnt);
+		fprintf(logFile, "float\n\n");
+		symbolInfo *type = new symbolInfo("float", "FLOAT");
+		$$ = type;
+	}
+	| VOID
+	{
+		fprintf(logFile, "At line no : %d type_specifier : VOID\n\n", lineCnt);
+		fprintf(logFile, "void\n\n");
+		symbolInfo *type = new symbolInfo("void", "VOID");
+		$$ = type;
+	}
+	;
  		
 declaration_list : declaration_list COMMA ID
 	{
@@ -216,6 +243,7 @@ declaration_list : declaration_list COMMA ID
 		varPtr->var_size = "-1"; // -1 for variable only;
 
 		var_vect.push_back(varPtr);
+		$$=si;
 		if (table->LookUp($3->getName()) == nullptr)
 		{
 			fprintf(errorFile, "Line no %d : Multiple declaration of variable\n\n", lineCnt);
@@ -234,7 +262,7 @@ declaration_list : declaration_list COMMA ID
 		varPtr->var_name = $3->getName();
 		varPtr->var_size = $5->getName(); // size for array variable
 		var_vect.push_back(varPtr); 
-
+		$$=si;
 		if (table->LookUp($3->getName()) == nullptr)
 		{
 			fprintf(errorFile, "Line no %d : Multiple declaration of variable\n\n", lineCnt);
@@ -253,6 +281,7 @@ declaration_list : declaration_list COMMA ID
 		varPtr->var_size = "-1"; // -1 for variable only;
 
 		var_vect.push_back(varPtr);
+		$$=si;
 		if (table->LookUp($1->getName()) == nullptr)
 		{
 			fprintf(errorFile, "Line no %d : Multiple declaration of variable\n\n", lineCnt);
@@ -270,7 +299,7 @@ declaration_list : declaration_list COMMA ID
 		varPtr->var_name = $1->getName();
 		varPtr->var_size = $3->getName(); // size for array variable
 		var_vect.push_back(varPtr); 
-
+		$$=si;
 		if (table->LookUp($1->getName()) == nullptr)
 		{
 			fprintf(errorFile, "Line no %d : Multiple declaration of variable\n\n", lineCnt);

@@ -18,6 +18,7 @@ public:
     void EnterScope();
     void ExitScope();
     bool Insert(std::string Name, std::string Type);
+    bool Insert(symbolInfo *item);
     bool Remove(std::string Name);
     symbolInfo *LookUp(std::string Name);
     void printCurrentScopeTable();
@@ -80,6 +81,10 @@ bool SymbolTable::Insert(std::string Name, std::string Type)
     return accept;
 }
 
+bool SymbolTable::Insert(symbolInfo *item)
+{
+    return this->currScopeTable->Insert(item);
+}
 
 bool SymbolTable::Remove(std::string Name)
 {
