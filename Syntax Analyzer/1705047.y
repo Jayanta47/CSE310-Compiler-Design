@@ -32,24 +32,34 @@ std::string code_segm;
 vector<string> code_vect;
 vector<symbolInfo*> arg_vect;
 vector<variableInfo*> var_vect;
+vector<param*> temp_param_list;
 SymbolTable *table;
 
 // auxilliary variables
 variableInfo *varPtr;
+param *p;
 std::string type, final_type;
 std::string name, final_name;
 std::string return_type;
 
 // defined functions
-void insertVarIntoTable(std::string type, std::string varType, variableInfo *vp)
+void insertVarIntoTable(std::string varType, variableInfo *vp)
 {
-	symbolInfo *si = new symbolInfo(vp->var_name, type);
+	symbolInfo *si = new symbolInfo(vp->var_name, "ID");
 	si->setVarType(varType);
 	int varSize = atoi(vp->var_size.c_str());
 	si->setArrSize(varSize);
 	if (varSize == -1) {si->setIDType("variable");}
 	else si->setIDType("array");
 	table->Insert(si);
+}
+
+void insertFuncIntoTable(std::string name, functionInfo* funcPtr)
+{
+	symbolInfo *si = new symbolInfo(name, "ID");
+	si->setIDType("function");
+	si->setVarType(funcPtr->returnType);
+	// unfinished
 }
 
 
@@ -169,24 +179,85 @@ func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON
 	;
 		 
 func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statement
-		| type_specifier ID LPAREN RPAREN compound_statement
- 		;				
+	| type_specifier ID LPAREN RPAREN compound_statement
+	;				
 
 
 parameter_list  : parameter_list COMMA type_specifier ID
-		| parameter_list COMMA type_specifier
- 		| type_specifier ID
-		| type_specifier
- 		;
+	{
+		fprintf(logFile, "At line no %d : parameter_list  : parameter_list COMMA type_specifier ID\n\n", lineCnt);
+		code_segm = $1->getName() + " , " + $3->getName() + " " + $4->getName();
+		fprintf(logFile, "%s\n\n", code_segm.c_str());
+		symbolInfo *si = new symbolInfo(code_segm, "parameter_list");
+		p = new param;
+		p->param_type = $3->getName();
+		p->param_name = $4->getName();
+		temp_param_list.push_back(p);
+	}
+	| parameter_list COMMA type_specifier
+	{
+		fprintf(logFile, "At line no %d : parameter_list  : parameter_list COMMA type_specifier\n\n", lineCnt);
+		code_segm = $1->getName() + " , " + $3->getName();
+		fprintf(logFile, "%s\n\n", code_segm.c_str());
+		symbolInfo *si = new symbolInfo(code_segm, "parameter_list");
+		p = new param;
+		p->param_type = $3->getName();
+		p->param_name = "";
+		temp_param_list.push_back(p);
+	}
+	| type_specifier ID
+	{
+		fprintf(logFile, "At line no %d : parameter_list  : type_specifier ID\n\n", lineCnt);
+		code_segm = $1->getName() + " " + $2->getName();
+		fprintf(logFile, "%s\n\n", code_segm.c_str());
+		symbolInfo *si = new symbolInfo(code_segm, "parameter_list");
+		p = new param;
+		p->param_type = $1->getName();
+		p->param_name = $2->getName();
+		temp_param_list.push_back(p);
+	}
+	| type_specifier
+	{
+		fprintf(logFile, "At line no %d : parameter_list  : type_specifier\n\n", lineCnt);
+		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		$$=$1; $$->setType("parameter_list");
+		p = new param;
+		p->param_type = $1->getName();
+		p->param_name = "";
+		temp_param_list.push_back(p);
+	}
+	;
 
  		
-compound_statement : LCURL statements RCURL
-		{
-			fprintf(logFile, "At line no %d : compound_statement : LCURL statements RCURL\n\n", lineCnt);
+compound_statement : LCURL interimScopeAct statements RCURL
+	{
+		fprintf(logFile, "At line no %d : compound_statement : LCURL statements RCURL\n\n", lineCnt);
+		code_segm = "{\n"+$3->getName()+"}";
+		fprintf(logFile, "%s\n\n", code.c_str());
+		symbolInfo *si = new symbolInfo(code, "compound_statement");
+		$$=si;
+		table->printAllScopeTable();
+		table->ExitScope();
 
-		}
-		| LCURL RCURL
-		;
+	}
+	| LCURL interimScope RCURL
+	{
+		fprintf(logFile, "At line no %d : compound_statement : LCURL RCURL\n\n", lineCnt);
+		code_segm = "{\n}";
+		fprintf(logFile, "%s\n\n", code.c_str());
+		symbolInfo *si = new symbolInfo(code, "compound_statement");
+		$$=si;
+		table->printAllScopeTable();
+		table->ExitScope();
+	}
+	;
+
+interimScopeAct : 
+	{
+		table->EnterScope();
+		// add parameters here
+	}
+	;
  		    
 var_declaration : type_specifier declaration_list SEMICOLON
 	{
@@ -203,7 +274,7 @@ var_declaration : type_specifier declaration_list SEMICOLON
 		}
 		for ( int i=0; i<var_vect.size(); i++) 
 		{
-			insertVarIntoTable($1->getType(), varType, var_vect[i]);
+			insertVarIntoTable(varType, var_vect[i]);
 		} 
 		var_vect.clear();
 	}
