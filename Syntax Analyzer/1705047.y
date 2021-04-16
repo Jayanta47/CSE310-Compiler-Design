@@ -22,12 +22,20 @@ FILE *errorFile;
 
 
 // containers and structures
+
+struct variableInfo {
+	std::string var_name;
+	std::string var_size;
+};
+
 std::string code_segm;
 vector<string> code_vect;
 vector<symbolInfo*> arg_vect;
+vector<variableInfo*> var_vect;
 SymbolTable *table;
 
 // auxilliary variables
+variableInfo *varPtr;
 std::string type, final_type;
 std::string name, final_name;
 std::string return_type;
@@ -198,37 +206,112 @@ type_specifier	: INT
  		;
  		
 declaration_list : declaration_list COMMA ID
- 		  | declaration_list COMMA ID LTHIRD CONST_INT RTHIRD
- 		  | ID
- 		  | ID LTHIRD CONST_INT RTHIRD
- 		  ;
+	{
+		fprintf(logFile, "At line no : %d declaration_list : declaration_list COMMA ID\n\n", lineCnt);
+		fprintf(logFile, "%s , %s\n\n", $1->getName().c_str(), $3->getName().c_str());
+		symbolInfo *si = new symbolInfo($1->getName()+","+$3->getName(), "declaration_list");
+
+		varPtr = new variableInfo;
+		varPtr->var_name = $3->getName();
+		varPtr->var_size = "-1"; // -1 for variable only;
+
+		var_vect.push_back(varPtr);
+		if (table->LookUp($3->getName()) == nullptr)
+		{
+			fprintf(errorFile, "Line no %d : Multiple declaration of variable\n\n", lineCnt);
+			SMNTC_ERR_COUNT++;
+		}
+
+	}
+	| declaration_list COMMA ID LTHIRD CONST_INT RTHIRD
+	{
+		/* declaration of array */
+		fprintf(logFile, "At line no : %d declaration_list : declaration_list COMMA ID LTHIRD CONST_INT RTHIRD\n\n", lineCnt);
+		fprintf(logFile, "%s , %s[%s]\n\n", $1->getName().c_str(), $3->getName().c_str(), $5->getName().c_str());
+		symbolInfo *si = new symbolInfo($1->getName()+","+$3->getName()+"["+$5->getName()+"]", "declaration_list");
+
+		varPtr = new variableInfo;
+		varPtr->var_name = $3->getName();
+		varPtr->var_size = $5->getName(); // size for array variable
+		var_vect.push_back(varPtr); 
+
+		if (table->LookUp($3->getName()) == nullptr)
+		{
+			fprintf(errorFile, "Line no %d : Multiple declaration of variable\n\n", lineCnt);
+			SMNTC_ERR_COUNT++;
+		}
+	}
+	| ID
+	{
+		fprintf(logFile, "At line no : %d declaration_list : ID\n\n", lineCnt);
+		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		$$=$1;
+		$$->setType("declaration_list");
+
+		varPtr = new variableInfo;
+		varPtr->var_name = $1->getName();
+		varPtr->var_size = "-1"; // -1 for variable only;
+
+		var_vect.push_back(varPtr);
+		if (table->LookUp($1->getName()) == nullptr)
+		{
+			fprintf(errorFile, "Line no %d : Multiple declaration of variable\n\n", lineCnt);
+			SMNTC_ERR_COUNT++;
+		}
+	}
+	| ID LTHIRD CONST_INT RTHIRD
+	{
+		/* declaration of array */
+		fprintf(logFile, "At line no : %d declaration_list : ID LTHIRD CONST_INT RTHIRD\n\n", lineCnt);
+		fprintf(logFile, "%s[%s]\n\n", $1->getName().c_str(), $3->getName().c_str());
+		symbolInfo *si = new symbolInfo($1->getName()+"["+$5->getName()+"]", "declaration_list");
+
+		varPtr = new variableInfo;
+		varPtr->var_name = $1->getName();
+		varPtr->var_size = $3->getName(); // size for array variable
+		var_vect.push_back(varPtr); 
+
+		if (table->LookUp($1->getName()) == nullptr)
+		{
+			fprintf(errorFile, "Line no %d : Multiple declaration of variable\n\n", lineCnt);
+			SMNTC_ERR_COUNT++;
+		}
+	}
+	;
  		  
 statements : statement
 	{
 		fprintf(logFile, "At line no : %d statements : statement\n\n", lineCnt);
 		fprintf(logFile, "%s\n\n", $1->getName().c_str());
 		$$=$1;
+		$$->setName($1->getName()+"\n");
+		$$->setType("statements");
 	}
 	| statements statement
+	{
+		fprintf(logFile, "At line no : %d statements : statement\n\n", lineCnt);
+		fprintf(logFile, "%s%s\n\n", $1->getName().c_str(), $2->getName().c_str());
+		$$=new symbolInfo($1->getName() + $2->getName()+"\n", "statements"); // needs further checking 
+	}
 	;
 	   
 statement : var_declaration
 	{
 		fprintf(logFile, "At line no : %d statement : var_declaration\n\n", lineCnt);
 		fprintf(logFile, "%s\n\n", $1->getName().c_str());
-		$$=$1;
+		$$=$1; $$->setType("statement");
 	}
 	| expression_statement
 	{
 		fprintf(logFile, "At line no : %d statement : expression_statement\n\n", lineCnt);
 		fprintf(logFile, "%s\n\n", $1->getName().c_str());
-		$$=$1;
+		$$=$1;$$->setType("statement");
 	}
 	| compound_statement
 	{
 		fprintf(logFile, "At line no : %d statement : compound_statement\n\n", lineCnt);
 		fprintf(logFile, "%s\n\n", $1->getName().c_str());
-		$$=$1;
+		$$=$1;$$->setType("statement");
 	}
 	| FOR LPAREN expression_statement expression_statement expression RPAREN statement
 	{
@@ -236,7 +319,7 @@ statement : var_declaration
 		std::string statementC = "for("+$3->getName()+$4->getName()+$5->getName()+")"+$7->getname();
 		fprintf(logFile, "%s\n\n", statementC.c_str());
 		symbolInfo *si = new symbolInfo(statementC, "statement");
-		$$=si;
+		$$=si;$$->setType("statement");
 	}
 	| IF LPAREN expression RPAREN statement
 	{
@@ -244,7 +327,7 @@ statement : var_declaration
 		std::string statementC = "if("+$3->getName()+")"+$5->getname();
 		fprintf(logFile, "%s\n\n", statementC.c_str());
 		symbolInfo *si = new symbolInfo(statementC, "statement");
-		$$=si;
+		$$=si;$$->setType("statement");
 	}
 	| IF LPAREN expression RPAREN statement ELSE statement
 	{
@@ -252,7 +335,7 @@ statement : var_declaration
 		std::string statementC = "if("+$3->getName()+")"+$5->getname()+"else"+$7->getName();
 		fprintf(logFile, "%s\n\n", statementC.c_str());
 		symbolInfo *si = new symbolInfo(statementC, "statement");
-		$$=si;
+		$$=si; $$->setType("statement");
 	}
 	| WHILE LPAREN expression RPAREN statement
 	{
@@ -260,7 +343,7 @@ statement : var_declaration
 		std::string statementC = "while("+$3->getName()+")"+$5->getname();
 		fprintf(logFile, "%s\n\n", statementC.c_str());
 		symbolInfo *si = new symbolInfo(statementC, "statement");
-		$$=si;
+		$$=si; $$->setType("statement");
 	}
 	| PRINTLN LPAREN ID RPAREN SEMICOLON
 	{
@@ -268,7 +351,7 @@ statement : var_declaration
 		std::string statementC = "println("+$3->getName()+")"+";";
 		fprintf(logFile, "%s\n\n", statementC.c_str());
 		symbolInfo *si = new symbolInfo(statementC, "statement");
-		$$=si;
+		$$=si; $$->setType("statement");
 	}
 	| RETURN expression SEMICOLON
 	{
@@ -276,7 +359,7 @@ statement : var_declaration
 		std::string statementC = "return "+$2->getName()+";";
 		fprintf(logFile, "%s\n\n", statementC.c_str());
 		symbolInfo *si = new symbolInfo(statementC, "statement");
-		$$=si;
+		$$=si; $$->setType("statement");
 
 		if ($2->getVarType() == "void")
 		{
