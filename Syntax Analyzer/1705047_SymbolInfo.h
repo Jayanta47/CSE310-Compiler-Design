@@ -10,6 +10,7 @@ struct param {
 struct functionInfo
 {
     std::string returnType;
+    bool onlyDefined;
     std::vector<param*> param_list;
 };
 
@@ -43,6 +44,8 @@ public:
     int getArrSize() {return this->arrSize;}
     void setFunctionInfo(functionInfo *funcPtr) {this->funcPtr = funcPtr;}
     functionInfo *getFunctionInfo() {return this->funcPtr;}
+    bool hasFuncPtr() {return this->funcPtr != nullptr;}
+    bool funcDeclNotDef() {return this->funcPtr->onlyDefined;}
     int getParamSize()
     {
         return (this->funcPtr != nullptr)?this->funcPtr->param_list.size():0;

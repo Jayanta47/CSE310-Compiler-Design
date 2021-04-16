@@ -62,6 +62,73 @@ void insertFuncIntoTable(std::string name, functionInfo* funcPtr)
 	// unfinished
 }
 
+void checkFunctionDef(std::string funcName, std::string returnType)
+{
+	symbolInfo *x = table->LookUp(funcName);
+	if (x == nullptr)
+	{
+		insertFuncIntoTable(funcName, returnType);
+	}
+	else if (x->getIdType()!="function")
+	{
+		fprintf(logFile, "Line no %d : name %s previously used(not as function name)\n\n", lineCnt, funcName);
+		SMNTC_ERR_COUNT++;
+	}
+	else if (!x->hasFuncPtr())
+	{
+		fprintf(logFile, "Line no %d : function previously defined but not properly structured\n\n", lineCnt);
+		SMNTC_ERR_COUNT++;
+	}
+	else if (!x->funcDeclNotDef())
+	{
+		fprintf(logFile, "Line no %d : Multiple definitions of same function (name:%s)\n\n", lineCnt, funcName);
+		SMNTC_ERR_COUNT++;
+	}
+	else 
+	{
+		//function declaration found
+		//need to match parameter types		
+
+		// check return type
+		if (returnType != x->getVarType())
+		{
+			fprintf(logFile, "Line no %d : Return type mismatch\n\n", lineCnt);
+			SMNTC_ERR_COUNT++;
+		}
+		else if (x->getParamSize() == 1 && temp_param_list.size()==0 && x->getParamAt(0)->param_type == "void")
+		{
+			// didnt understand this
+			x->getFunctionInfo()->onlyDefined = false;
+		}
+		else if (x->getParamSize() == 0 && temp_param_list.size()==1 && temp_param_list[0]->param_type == "void")
+		{
+			// didnt understand this
+			x->getFunctionInfo()->onlyDefined = false;
+		}
+		else 
+		{
+			// check parameter consistency
+			if (x->getParamSize() != temp_param_list.size())
+			{
+				fprintf(logFile, "Line no %d : Parameter size does not match for declaration and definition\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+			}
+			else 
+			{
+				int i;
+				for (i=0; i<temp_param_list.size(); i++)
+				{
+					if (temp_param_list[i]->param_type != x->getParamAt(i)->param_type)
+					{
+						fprintf(logFile, "Line no %d : Parameter Type mismatch\n\n", lineCnt);
+						SMNTC_ERR_COUNT++;
+					}
+				}
+			}
+		}
+	}
+}
+
 
 void yyerror(char *s)
 {
@@ -179,7 +246,24 @@ func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON
 	;
 		 
 func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statement
+	{
+		fprintf(logFile, "At line no %d : func_definition : type specifier ID LPAREN parameter_list RPAREN compound_statement\n\n", lineCnt);
+		code_segm = $1->getName() + " " + $2->getName() + " (" + $4->getName() + ") " + $6->getName();
+		fprintf(logFile, "%s\n\n", code_segm.c_str());
+		symbolInfo *si = new symbolInfo(code_segm, "func_definition");
+		si->setVarType($1->getname());
+		functionInfo *funcPtr = new functionInfo;
+		funcPtr->returnType = $1->getName();
+		// task:
+		// param_list to function pointer
+		//setIDType
+
+				
+	}
 	| type_specifier ID LPAREN RPAREN compound_statement
+	{
+
+	}
 	;				
 
 
