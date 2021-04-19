@@ -28,8 +28,7 @@ extern int ERR_COUNT;
 extern FILE *logFile;
 extern FILE *errorFile;
 
-// std::string logFileName =  "1705047_log.txt";
-// std::string tokenFileName = "1705047_token.txt";
+
 
 int tempCommentLineCnt;
 std::string commentStr = "";
@@ -431,10 +430,6 @@ UNRECOGNIZED_CHAR_ERR .
     return ID;
 }
 
-{STRING} {
-    StringUtil(yytext);
-}
-
 {TOO_MANY_DECIMAL_POINT_ERR} {
     ERR_COUNT++;
     fprintf(errorFile, "Error at line no %d: 
@@ -469,21 +464,6 @@ UNRECOGNIZED_CHAR_ERR .
     ERR_COUNT++;
     fprintf(errorFile, "Error at line no %d: 
         Empty character constant error %s\n\n", lineCnt, yytext);
-}
-
-{UNFINISHED_STRING_ERR} {
-    ERR_COUNT++;
-    std::string str(yytext);
-    int newLineCntr = 0;
-    for(int i = 0; i < str.size(); i++)
-    {
-        if (str[i] == '\n') {
-            newLineCntr++;
-        }
-    }
-    str.pop_back();
-    fprintf(errorFile, "Error at line no %d: 
-        Unterminated String %s\n\n", lineCnt-newLineCntr, str.c_str());    
 }
 
 
