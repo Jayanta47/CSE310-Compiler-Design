@@ -12,7 +12,7 @@
 #include<cstring>
 #include<cstdio>
 #include<cstdlib>
-#include "1705047_SymbolTable.h"
+#include "SymbolTable.h"
 #include "y.tab.h"
 
 using namespace std;
@@ -32,95 +32,6 @@ extern FILE *errorFile;
 
 int tempCommentLineCnt;
 std::string commentStr = "";
-
-
-void StringUtil(std::string s) {
-    std::string str = "";
-    for (int i = 0; i < s.size(); i++) {
-        if (s[i] == '\"' && (i==0 || (i == s.size()-1))) {
-            continue;
-        }
-        else if (s[i]=='\\' && s[i+1] == '\r' && s[i+2] == '\n' && i+1<s.size()) {
-            i+=2;lineCnt++;
-        }
-        else if (i+1<s.size() && s[i]=='\\' && s[i+1] == '\n')
-        {
-            i++;lineCnt++;
-        }
-        else if (s[i] == '\\') {
-            if (s[i+1] == 't') s[i+1] = '\t';
-            else if (s[i+1] == 'n') s[i+1] = '\n';
-            else if (s[i+1] == '\\') s[i+1] = '\\';
-            else if (s[i+1] == '\'') s[i+1] = '\'';
-            else if (s[i+1] == 'a') s[i+1] = '\a';
-            else if (s[i+1] == 'f') s[i+1] = '\f';
-            else if (s[i+1] == 'r') s[i+1] = '\r';
-            else if (s[i+1] == 'b') s[i+1] = '\b';
-            else if (s[i+1] == 'v') s[i+1] = '\v';
-            else if (s[i+1] == '0') s[i+1] = '\0';
-            else if (s[i+1] == '\"') s[i+1] = '\"';
-        }
-        else {
-            str.push_back(s[i]);
-        }
-    }
-
-    printf("%s\n", str.c_str());
-
-    symbolInfo *si = new symbolInfo(str.c_str(), "STRING");
-    yylval.symbol = si;
-}
-
-void processConstChar(std::string str) {
-    char ch;
-    if (str.size() == 3 && str[0] == '\'' && str[2] == '\'') {
-        ch = str[1];
-    }
-    else if (str[1] == '\\'){
-        char sc = str[2];
-        switch (sc) {
-            case 'n':
-                ch = '\n';
-                break;
-            case 't':
-                ch = '\t';
-                break;
-            case '\\':
-                ch = '\\';
-                break;
-            case 'a':
-                ch = '\a';
-                break;
-            case 'f':
-                ch = '\f';
-                break;
-            case 'r':
-                ch = '\r';
-                break;
-            case 'b':
-                ch = '\b';
-                break;
-            case 'v':
-                ch = '\v';
-                break;
-            case '0':
-                ch = '\0';
-                break;
-            case '\"':
-                ch = '\"';
-                break;
-            case '\'':
-                ch = '\'';
-                break;
-            default:
-                break;
-        } 
-
-    }
-    else return;
-    symbolInfo *si = new symbolInfo(ch, "CONST_CHAR");
-    yylval.symbol = si;
-} 
 
 
 %}
@@ -333,7 +244,7 @@ UNRECOGNIZED_CHAR_ERR .
 
 {BREAK} {return BREAK;}
 
-{INT} {return INT'}
+{INT} {return INT;}
 
 {CHAR} {return CHAR;}
 
@@ -419,10 +330,6 @@ UNRECOGNIZED_CHAR_ERR .
     return CONST_FLOAT;    
 }
 
-{CONST_CHAR} {
-    processConstChar(yytext);
-    return CONST_CHAR;
-}
 
 {IDENTIFIER} {
     symbolInfo *si = new symbolInfo(yytext, "ID");
@@ -432,38 +339,32 @@ UNRECOGNIZED_CHAR_ERR .
 
 {TOO_MANY_DECIMAL_POINT_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: 
-        Too many decimal points %s\n\n", lineCnt, yytext);
+    fprintf(errorFile, "Error at line no %d: Too many decimal points %s\n\n", lineCnt, yytext);
 }
 
 {INVALID_PREF_SUF_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: 
-        Invalid prefix on ID or invalid suffix on Number %s\n\n", lineCnt, yytext);
+    fprintf(errorFile, "Error at line no %d: Invalid prefix on ID or invalid suffix on Number %s\n\n", lineCnt, yytext);
 }
 
 {ILL_FORMED_NUM_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: 
-        Ill formed number %s\n\n", lineCnt, yytext);    
+    fprintf(errorFile, "Error at line no %d: Ill formed number %s\n\n", lineCnt, yytext);    
 }
 
 {UNFINISHER_CHAR_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: 
-        Unterminated character %s\n\n", lineCnt, yytext);
+    fprintf(errorFile, "Error at line no %d: Unterminated character %s\n\n", lineCnt, yytext);
 }
 
 {MULTI_CHAR_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: 
-        Multi character constant error %s\n\n", lineCnt, yytext);
+    fprintf(errorFile, "Error at line no %d: Multi character constant error %s\n\n", lineCnt, yytext);
 }
 
 {EMPTY_CHAR_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: 
-        Empty character constant error %s\n\n", lineCnt, yytext);
+    fprintf(errorFile, "Error at line no %d: Empty character constant error %s\n\n", lineCnt, yytext);
 }
 
 
@@ -473,8 +374,7 @@ UNRECOGNIZED_CHAR_ERR .
 
 {UNRECOGNIZED_CHAR_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: 
-        Unrecognized character %s\n\n", lineCnt, yytext);        
+    fprintf(errorFile, "Error at line no %d: Unrecognized character %s\n\n", lineCnt, yytext);        
 }
 
 
