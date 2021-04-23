@@ -14,6 +14,8 @@ Symbol Table/output_4.txt
 Symbol Table/output_5.txt
 Symbol Table/Test_Output/*
 Symbol Table/main.exe
+Symbol Table/main.o
+Symbol Table/main.out
 Symbol Table/.vscode
-*.txt
 *.out
+*lexer.cpp
