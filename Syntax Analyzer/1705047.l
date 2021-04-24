@@ -66,6 +66,7 @@ CASE "case"
 DEFAULT "default"
 CONTINUE "continue" 
 PRINTLN "println"
+PRINTF "printf"
 
 /* ----------------------------------------------------------------*/
 
@@ -281,6 +282,8 @@ UNRECOGNIZED_CHAR_ERR .
 {SEMICOLON} {return SEMICOLON;}
 
 {PRINTLN} {return PRINTLN;}
+
+{PRINTF} {return PRINTF;}
 
 {INCOP} {
     return INCOP;

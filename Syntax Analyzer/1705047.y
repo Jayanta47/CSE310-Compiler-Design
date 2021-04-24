@@ -65,9 +65,14 @@ void insertFuncIntoTable(std::string name, functionInfo* funcPtr)
 {
 	symbolInfo *si = new symbolInfo(name, "ID");
 	si->setIdType("function");
+	
 	si->setVarType(funcPtr->returnType);
+	//printf("insert func %s with var type %s\n",si->getName().c_str(), si->getVarType().c_str());
 	si->setFunctionInfo(funcPtr);
-	table->Insert(si);
+	if(table->Insert(si))
+	{
+		//printf("insert func %s with var type %s\n",si->getName().c_str(), si->getVarType().c_str());
+	}
 }
 
 void checkFunctionDef(std::string funcName, std::string returnType)
@@ -79,8 +84,28 @@ void checkFunctionDef(std::string funcName, std::string returnType)
 		f->returnType = returnType;
 		f->onlyDefined = false;
 		std::vector<param*> param_list;
+		// There can be multiple declarations of a parameter inside param_list
+		// Multiple declarations of same param raises error
 		for (int i=0;i<temp_param_list.size();i++)
 		{
+			for (int j=0; j<param_list.size();j++)
+			{
+				if(param_list[j]->param_name == temp_param_list[i]->param_name &&
+					param_list[j]->param_type == temp_param_list[i]->param_type)
+				{
+					fprintf(logFile, "Error at line %d : Multiple declaration of %s in parameter\n\n", lineCnt, param_list[j]->param_name.c_str());
+					fprintf(errorFile, "Line no %d : Multiple declaration of %s in parameter\n\n", lineCnt, param_list[j]->param_name.c_str());
+					SMNTC_ERR_COUNT++;
+				}
+				else if (param_list[j]->param_name == temp_param_list[i]->param_name)
+				{
+					fprintf(logFile, "Error at line %d : Multiple declaration of %s (as type %s and %s) in parameter\n\n", 
+							lineCnt, param_list[j]->param_name.c_str());
+					fprintf(errorFile, "Line no %d : Multiple declaration of %s (as type %s and %s) in parameter\n\n", 
+							lineCnt, param_list[j]->param_name.c_str());
+					SMNTC_ERR_COUNT++;
+				}
+			}
 			param_list.push_back(temp_param_list[i]);
 		}
 		f->param_list = param_list;
@@ -89,7 +114,7 @@ void checkFunctionDef(std::string funcName, std::string returnType)
 	}
 	else if (x->getIdType()!="function")
 	{
-		fprintf(logFile, "Line no %d : name %s previously used(not as function name)\n\n", lineCnt, funcName.c_str());
+		fprintf(errorFile, "Line no %d : Multiple declaration of %s\n\n", lineCnt, funcName.c_str());
 		SMNTC_ERR_COUNT++;
 	}
 	else if (!x->hasFuncPtr())
@@ -108,9 +133,12 @@ void checkFunctionDef(std::string funcName, std::string returnType)
 		//need to match parameter types		
 
 		// check return type
+		//printf("passed return type = %s\n", returnType.c_str());
+		//printf("checking return type for %s with return type = %s\n", x->getName().c_str(), x->getVarType().c_str());
 		if (returnType != x->getVarType())
 		{
-			fprintf(logFile, "Line no %d : Return type mismatch\n\n", lineCnt);
+			fprintf(errorFile, "Line no %d : Return type mismatch with function declaration in function %s\n\n", lineCnt, x->getName().c_str());
+			fprintf(logFile, "Error at line %d : Return type mismatch with function declaration in function %s\n\n", lineCnt, x->getName().c_str());
 			SMNTC_ERR_COUNT++;
 		}
 		else if (x->getParamSize() == 1 && temp_param_list.size()==0 && x->getParamAt(0)->param_type == "void")
@@ -126,9 +154,12 @@ void checkFunctionDef(std::string funcName, std::string returnType)
 		else 
 		{
 			// check parameter consistency
+			//printf("for function %s, def_size = %d\n", x->getName().c_str(), x->getParamSize());
+
 			if (x->getParamSize() != temp_param_list.size())
 			{
-				fprintf(logFile, "Line no %d : Parameter size does not match for declaration and definition\n\n", lineCnt);
+				fprintf(errorFile, "Line no %d : Total number of arguments mismatch with declaration in function %s\n\n", lineCnt, x->getName().c_str());
+				fprintf(logFile, "Error at line %d : Total number of arguments mismatch with declaration in function %s\n\n", lineCnt, x->getName().c_str());
 				SMNTC_ERR_COUNT++;
 			}
 			else 
@@ -162,11 +193,13 @@ void checkFunctionDec(std::string funcName, std::string returnType)
 		functionInfo *f = new functionInfo;
 		f->returnType = returnType;
 		f->onlyDefined = true;
+		f->param_list = temp_param_list;
 		insertFuncIntoTable(funcName, f);
 	}
 	else 
 	{
-		fprintf(logFile, "Line no %d : Multiple definitions of same function (name:%s)\n\n", lineCnt, funcName);
+		fprintf(logFile, "Line no %d : Multiple definitions for function %s\n\n", lineCnt, funcName.c_str());
+		fprintf(errorFile, "Line no %d : Multiple definitions for function %s\n\n", lineCnt, funcName.c_str());
 		SMNTC_ERR_COUNT++;
 	}
 }
@@ -214,7 +247,7 @@ void yyerror(char *s)
 
 %token IF ELSE FOR WHILE DO BREAK INT CHAR FLOAT DOUBLE VOID RETURN 
 %token SWITCH CASE DEFAULT CONTINUE ASSIGNOP LPAREN RPAREN LCURL RCURL 
-%token LTHIRD RTHIRD COMMA SEMICOLON NOT PRINTLN INCOP DECOP
+%token LTHIRD RTHIRD COMMA SEMICOLON NOT PRINTLN INCOP DECOP PRINTF
 %token<symbol>CONST_INT
 %token<symbol>CONST_FLOAT
 %token<symbol>ID
@@ -240,7 +273,6 @@ void yyerror(char *s)
 
 start : program
 	{
-		//write your code in this block in all the similar blocks below
 		fprintf(logFile, "At line no: %d start : program\n\n", lineCnt-1);// lineCnt is decreased by 1 
 												//because it read the last newline of input file and falsely incremented line count
 		for (auto str : code_vect)
@@ -300,7 +332,7 @@ unit : var_declaration
 func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON
 	{
 		fprintf(logFile, "At line no: %d func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON\n\n", lineCnt);
-		code_segm = $1->getName() + " " + $2->getName() + " (" + $4->getName() + ");" ;
+		code_segm = $1->getName() + " " + $2->getName() + "(" + $4->getName() + ");" ;
 		fprintf(logFile, "%s\n\n", code_segm.c_str());
 		$$ = new symbolInfo(code_segm, "func_declaration");
 		checkFunctionDec($2->getName(), $1->getName());
@@ -309,7 +341,7 @@ func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON
 	| type_specifier ID LPAREN RPAREN SEMICOLON
 	{
 		fprintf(logFile, "At line no: %d func_declaration : type_specifier ID LPAREN RPAREN SEMICOLON\n\n", lineCnt);
-		code_segm = $1->getName() + " " + $2->getName() + " (" + ");" ;
+		code_segm = $1->getName() + " " + $2->getName() + "(" + ");" ;
 		fprintf(logFile, "%s\n\n", code_segm.c_str());
 		$$ = new symbolInfo(code_segm, "func_declaration");
 		checkFunctionDec($2->getName(), $1->getName());
@@ -319,7 +351,7 @@ func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON
 func_definition : func_definition_initP compound_statement
 	{
 		fprintf(logFile, "At line no %d : func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statement\n\n", lineCnt);
-		code_segm = $1->getName() + " " + $2->getName();
+		code_segm = $1->getName() + $2->getName();
 		fprintf(logFile, "%s\n\n", code_segm.c_str());
 		symbolInfo *si = new symbolInfo(code_segm, "func_definition");
 		si->setVarType($1->getVarType());
@@ -328,7 +360,7 @@ func_definition : func_definition_initP compound_statement
 	| func_definition_init compound_statement
 	{
 		fprintf(logFile, "At line no %d : func_definition : type_specifier ID LPAREN RPAREN compound_statement\n\n", lineCnt);
-		code_segm = $1->getName() + " " + $2->getName();
+		code_segm = $1->getName() + $2->getName();
 		fprintf(logFile, "%s\n\n", code_segm.c_str());
 		symbolInfo *si = new symbolInfo(code_segm, "func_definition");
 		si->setVarType($1->getVarType());
@@ -355,7 +387,7 @@ func_definition_init : type_specifier ID LPAREN RPAREN
 parameter_list  : parameter_list COMMA type_specifier ID
 	{
 		fprintf(logFile, "At line no %d : parameter_list : parameter_list COMMA type_specifier ID\n\n", lineCnt);
-		code_segm = $1->getName() + " , " + $3->getName() + " " + $4->getName();
+		code_segm = $1->getName() + "," + $3->getName() + " " + $4->getName();
 		fprintf(logFile, "%s\n\n", code_segm.c_str());
 		symbolInfo *si = new symbolInfo(code_segm, "parameter_list");
 		$$=si;
@@ -367,7 +399,7 @@ parameter_list  : parameter_list COMMA type_specifier ID
 	| parameter_list COMMA type_specifier
 	{
 		fprintf(logFile, "At line no %d : parameter_list : parameter_list COMMA type_specifier\n\n", lineCnt);
-		code_segm = $1->getName() + ", " + $3->getName();
+		code_segm = $1->getName() + "," + $3->getName();
 		fprintf(logFile, "%s\n\n", code_segm.c_str());
 		symbolInfo *si = new symbolInfo(code_segm, "parameter_list");
 		$$=si;
@@ -503,6 +535,14 @@ type_specifier : INT
  		
 declaration_list : declaration_list COMMA ID
 	{
+		if (table->LookUpInCurrent($3->getName()) != nullptr)
+		{
+			//printf("%s\n", $3->getName().c_str());
+			fprintf(errorFile, "Line no %d : Multiple declaration of %s\n\n", lineCnt, $3->getName().c_str());
+			fprintf(logFile, "Error at line %d : Multiple declaration of %s\n\n", lineCnt, $3->getName().c_str());
+			SMNTC_ERR_COUNT++;
+		}
+
 		fprintf(logFile, "At line no: %d declaration_list : declaration_list COMMA ID\n\n", lineCnt);
 		fprintf(logFile, "%s, %s\n\n", $1->getName().c_str(), $3->getName().c_str());
 		symbolInfo *si = new symbolInfo($1->getName()+", "+$3->getName(), "declaration_list");
@@ -513,6 +553,10 @@ declaration_list : declaration_list COMMA ID
 
 		var_vect.push_back(varPtr);
 		$$=si;
+
+	}
+	| declaration_list COMMA ID LTHIRD CONST_INT RTHIRD
+	{
 		if (table->LookUpInCurrent($3->getName()) != nullptr)
 		{
 			//printf("%s\n", $3->getName().c_str());
@@ -520,10 +564,7 @@ declaration_list : declaration_list COMMA ID
 			fprintf(logFile, "Error at line %d : Multiple declaration of %s\n\n", lineCnt, $3->getName().c_str());
 			SMNTC_ERR_COUNT++;
 		}
-
-	}
-	| declaration_list COMMA ID LTHIRD CONST_INT RTHIRD
-	{
+		
 		/* declaration of array */
 		fprintf(logFile, "At line no: %d declaration_list : declaration_list COMMA ID LTHIRD CONST_INT RTHIRD\n\n", lineCnt);
 		fprintf(logFile, "%s, %s[%s]\n\n", $1->getName().c_str(), $3->getName().c_str(), $5->getName().c_str());
@@ -534,13 +575,7 @@ declaration_list : declaration_list COMMA ID
 		varPtr->var_size = $5->getName(); // size for array variable
 		var_vect.push_back(varPtr); 
 		$$=si;
-		if (table->LookUpInCurrent($3->getName()) != nullptr)
-		{
-			//printf("%s\n", $3->getName().c_str());
-			fprintf(errorFile, "Line no %d : Multiple declaration of %s\n\n", lineCnt, $3->getName().c_str());
-			fprintf(logFile, "Error at line %d : Multiple declaration of %s\n\n", lineCnt, $3->getName().c_str());
-			SMNTC_ERR_COUNT++;
-		}
+		
 	}
 	| ID
 	{
@@ -567,6 +602,17 @@ declaration_list : declaration_list COMMA ID
 	}
 	| ID LTHIRD CONST_INT RTHIRD
 	{
+		if (table->LookUpInCurrent($1->getName()) != nullptr)
+		{
+			//char st[10];
+			//sprintf(st, "%d", $1->getArrSize());
+			//printf("%s=%s\n", $1->getName().c_str(), st);
+			//printf("array %s = %s\n", $1->getName().c_str(), $1->getIdType().c_str());
+			fprintf(errorFile, "Line no %d : Multiple declaration of %s\n\n", lineCnt, $1->getName().c_str());
+			fprintf(logFile, "Error at line %d : Multiple declaration of %s\n\n", lineCnt, $1->getName().c_str());
+			SMNTC_ERR_COUNT++;
+		}
+
 		/* declaration of array */
 		fprintf(logFile, "At line no: %d declaration_list : ID LTHIRD CONST_INT RTHIRD\n\n", lineCnt);
 		fprintf(logFile, "%s[%s]\n\n", $1->getName().c_str(), $3->getName().c_str());
@@ -580,16 +626,7 @@ declaration_list : declaration_list COMMA ID
 		si->setIdType("array");
 		$$=si;
 		//printf("in array declaration , size = %d\n", atoi(varPtr->var_size.c_str()));
-		if (table->LookUpInCurrent($1->getName()) != nullptr)
-		{
-			//char st[10];
-			//sprintf(st, "%d", $1->getArrSize());
-			//printf("%s=%s\n", $1->getName().c_str(), st);
-			//printf("array %s = %s\n", $1->getName().c_str(), $1->getIdType().c_str());
-			fprintf(errorFile, "Line no %d : Multiple declaration of %s\n\n", lineCnt, $1->getName().c_str());
-			fprintf(logFile, "Error at line %d : Multiple declaration of %s\n\n", lineCnt, $1->getName().c_str());
-			SMNTC_ERR_COUNT++;
-		}
+		
 	}
 	;
  		  
@@ -646,7 +683,7 @@ statement : var_declaration
 	| IF LPAREN expression RPAREN statement ELSE statement
 	{
 		fprintf(logFile, "At line no: %d statement : IF LPAREN expression RPAREN statement ELSE statement\n\n", lineCnt);
-		std::string statementC = "if("+$3->getName()+")"+$5->getName()+"else"+$7->getName();
+		std::string statementC = "if("+$3->getName()+")"+$5->getName()+"else "+$7->getName();
 		fprintf(logFile, "%s\n\n", statementC.c_str());
 		symbolInfo *si = new symbolInfo(statementC, "statement");
 		$$=si; $$->setType("statement");
@@ -664,6 +701,32 @@ statement : var_declaration
 		fprintf(logFile, "At line no: %d statement : PRINTLN LPAREN ID RPAREN SEMICOLON\n\n", lineCnt);
 		std::string statementC = "println("+$3->getName()+")"+";";
 		fprintf(logFile, "%s\n\n", statementC.c_str());
+
+		// check if the declared ID is declared or not
+		symbolInfo *x = table->LookUpInAll($3->getName());
+		if (x == nullptr)
+		{
+			fprintf(errorFile, "Line no %d : Undeclared variable %s\n\n", lineCnt, $3->getName().c_str());
+			fprintf(logFile, "Error at line %d : Undeclared variable %s\n\n", lineCnt, $3->getName().c_str());
+			SMNTC_ERR_COUNT++;
+		}
+		symbolInfo *si = new symbolInfo(statementC, "statement");
+		$$=si; $$->setType("statement");
+	}
+	| PRINTF LPAREN ID RPAREN SEMICOLON
+	{
+		fprintf(logFile, "At line no: %d statement : PRINTF LPAREN ID RPAREN SEMICOLON\n\n", lineCnt);
+		std::string statementC = "printf("+$3->getName()+")"+";";
+		fprintf(logFile, "%s\n\n", statementC.c_str());
+		
+		// check if the declared ID is declared or not
+		symbolInfo *x = table->LookUpInAll($3->getName());
+		if (x == nullptr)
+		{
+			fprintf(errorFile, "Line no %d : Undeclared variable %s\n\n", lineCnt, $3->getName().c_str());
+			fprintf(logFile, "Error at line %d : Undeclared variable %s\n\n", lineCnt, $3->getName().c_str());
+			SMNTC_ERR_COUNT++;
+		}
 		symbolInfo *si = new symbolInfo(statementC, "statement");
 		$$=si; $$->setType("statement");
 	}
@@ -714,6 +777,7 @@ variable : ID
 
 		$$ = $1;
 		$$->setIdType("variable");
+
 		// check if this variable already exists in symbol table
 		symbolInfo *x = table->LookUpInAll($$->getName());
 		if (x) 
@@ -763,11 +827,11 @@ variable : ID
 		);
 		
 		si->setIdType("array");
-		symbolInfo *sts = table->LookUpInCurrent($1->getName());
+		symbolInfo *sts = table->LookUpInAll($1->getName());
 		//printf("variable sts check  name == %s, size = %d type==%s\n", sts->getName().c_str(), sts->getArrSize(), sts->getIdType().c_str());
 		if (sts == nullptr) {
-			fprintf(errorFile, "Line no %d : Variable not declared\n\n");
-			fprintf(logFile, "Error at line %d : Variable not declared\n\n");
+			fprintf(errorFile, "Line no %d : Undeclared variable %s\n\n", lineCnt, $$->getName().c_str());
+			fprintf(logFile, "Error at line %d : Undeclared variable %s\n\n", lineCnt, $$->getName().c_str());
 			SMNTC_ERR_COUNT++;
 			si->setVarType("int");
 		}
@@ -782,7 +846,7 @@ variable : ID
 		{
 			si->setVarType(sts->getVarType());
 			int index = atoi($3->getName().c_str());
-			printf("%s\n", $3->getVarType().c_str());
+			//printf("%s\n", $3->getVarType().c_str());
 			if (index>=sts->getArrSize() && $3->getVarType()=="int")
 			{
 				SMNTC_ERR_COUNT++;
@@ -808,6 +872,7 @@ variable : ID
 	{
 		fprintf(logFile, "At line no: %d expression : variable ASSIGNOP logic_expression\n\n", lineCnt);
 		fprintf(logFile, "%s = %s\n\n", $1->getName().c_str(), $3->getName().c_str());
+		
 		if ($3->getVarType() == "void")
 		{
 			/* function cannot be called in expression */
@@ -816,10 +881,19 @@ variable : ID
 			SMNTC_ERR_COUNT++;
 			$3->setType("int");
 		}
-		if ($1->getVarType() != $3->getVarType()) {
-			fprintf(errorFile, "Line no %d : Type mismatch\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Type mismatch\n\n", lineCnt);
-			SMNTC_ERR_COUNT++;
+		if ($1->getVarType() != $3->getVarType() ) {
+			if ($1->getVarType() == "float" && $3->getVarType() != "void")
+			{
+				// do nothing
+			}
+			else
+			{
+				//printf("%s type=%s, %s type=%s\n",$1->getName().c_str(), $1->getVarType().c_str(), $3->getName().c_str(), $3->getVarType().c_str());
+				fprintf(errorFile, "Line no %d : Type mismatch\n\n", lineCnt);
+				fprintf(logFile, "Error at line %d : Type mismatch\n\n", lineCnt);
+				SMNTC_ERR_COUNT++;
+			}
+			
 		}
 
 
@@ -834,6 +908,7 @@ variable : ID
 		{
 			searchName = $1->getName();
 		}
+		//printf("%s\n", searchName.c_str());
 		symbolInfo *x = table->LookUpInAll(searchName);
 		if (x==nullptr) {
 			//fprintf(errorFile, "Line no %d : Variable not declared in this scope\n\n", lineCnt);
@@ -921,12 +996,12 @@ rel_expression	: simple_expression
 			SMNTC_ERR_COUNT++;
 		}
 
-		if ($1->getVarType() != "int" || $3->getVarType() != "int") 
-		{
-			SMNTC_ERR_COUNT++;
-			fprintf(errorFile, "Line no %d : Non-Integer operand in RELOP operation\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Non-Integer operand in RELOP operation\n\n", lineCnt);
-		}
+		// if ($1->getVarType() != "int" || $3->getVarType() != "int")  // abandoned for not included in test cases
+		// {
+		// 	SMNTC_ERR_COUNT++;
+		// 	fprintf(errorFile, "Line no %d : Non-Integer operand in RELOP operation\n\n", lineCnt);
+		// 	fprintf(logFile, "Error at line %d : Non-Integer operand in RELOP operation\n\n", lineCnt);
+		// }
 		symbolInfo *si = new symbolInfo(
 			$1->getName()+$2->getName()+$3->getName(),
 			"rel_expression"
@@ -1024,6 +1099,12 @@ term :	unary_expression
 				fprintf(errorFile, "Line no %d : Non-Integer operand on modulus operator\n\n", lineCnt);
 				fprintf(logFile, "Error at line %d : Non-Integer operand on modulus operator\n\n", lineCnt);
 			}
+			if ($3->getName() == "0")
+			{
+				SMNTC_ERR_COUNT++;
+				fprintf(errorFile, "Line no %d : Modulus by Zero\n\n", lineCnt);
+				fprintf(logFile, "Error at line %d : Modulus by Zero\n\n", lineCnt);	
+			}
 		}
 		else 
 		{
@@ -1092,15 +1173,16 @@ factor	: variable
 	{
 		fprintf(logFile, "At line no: %d factor : ID LPAREN argument_list RPAREN\n\n", lineCnt);
 		fprintf(logFile, "%s(%s)\n\n", $1->getName().c_str(), $3->getName().c_str());
+		//printf("%s\n", $1->getName().c_str());
 		/* unfinished - check if function and arguments list match*/
 		$$ = new symbolInfo($1->getName() + "(" + $3->getName() + ")", "factor");
 		symbolInfo *x = table->LookUpInAll($1->getName());
 		//printf("Function retrieved = %s\n", $1->getName().c_str());
 		//printf("type = %s,\n", x->getType().c_str());
-		if (x->getFunctionInfo() == nullptr)
-		{
-			printf("no func pointer\n");
-		}
+		// if (x->getFunctionInfo() == nullptr)
+		// {
+		// 	printf("not func pointer\n");
+		// }
 		/* Check if the function name exists*/
 		if (x == nullptr) {
 			fprintf(errorFile, "Line no %d : Undeclared/undefined function name %s\n\n", lineCnt, $1->getName().c_str());
@@ -1118,9 +1200,9 @@ factor	: variable
 		else 
 		{ 
 			/* match argument with param list */
-			if(1) // if function doesnt have any parameter
+			if(x->getParamSize() == 0) // if function doesnt have any parameter
 			{
-
+				 // needs to be implemented
 			}
 			else if (x->getParamSize() != arg_vect.size()) 
 			{
@@ -1145,10 +1227,14 @@ factor	: variable
 						break;
 					}
 				}
-				if (i==arg_vect.size())
-				{
-					$$->setVarType(x->getVarType());
-				}
+				//printf("i val = %d\n", i);
+				$$->setVarType(x->getVarType());
+				// if (i!=arg_vect.size())
+				// {
+				// 	fprintf(errorFile, "Line no %d : Type mismatch (between argument and parameter) for %s\n\n", lineCnt, x->getName().c_str());
+				// 	fprintf(logFile, "Error at line %d : Type mismatch (between argument and parameter) for %s\n\n", lineCnt, x->getName().c_str());
+				// 	SMNTC_ERR_COUNT++;
+				// }
 			}
 			
 		}
