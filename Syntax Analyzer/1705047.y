@@ -430,6 +430,12 @@ parameter_list  : parameter_list COMMA type_specifier ID
 		p->param_name = "";
 		temp_param_list.push_back(p);
 	}
+	| type_specifier error 
+	{
+		printf("error reporting\n");
+		yyclearin;
+		yyerrok;
+	}
 	;
 
  		
@@ -628,6 +634,13 @@ declaration_list : declaration_list COMMA ID
 		//printf("in array declaration , size = %d\n", atoi(varPtr->var_size.c_str()));
 		
 	}
+	| declaration_list error
+	{
+		printf("printing declaration error\n");
+		printf("error-> %s\n", $1->getName().c_str());
+		yyclearin; yyerrok;
+		//table->printAllScopeTable();
+	}
 	;
  		  
 statements : statement
@@ -640,7 +653,7 @@ statements : statement
 	}
 	| statements statement
 	{
-		fprintf(logFile, "At line no: %d statements : statement\n\n", lineCnt);
+		fprintf(logFile, "At line no: %d statements : statements statement\n\n", lineCnt);
 		fprintf(logFile, "%s%s\n\n", $1->getName().c_str(), $2->getName().c_str());
 		$$=new symbolInfo($1->getName() + $2->getName()+"\n", "statements"); // needs further checking 
 	}
@@ -860,7 +873,8 @@ variable : ID
 
 	}
 	;
-	 
+
+
  expression : logic_expression	
 	{
 		fprintf(logFile, "At line no: %d expression : logic_expression\n\n", lineCnt);
@@ -919,7 +933,8 @@ variable : ID
 			$$->setVarType(x->getVarType());
 		}
 		type = $1->getVarType(); 
-	} 	
+	}
+		
 	;
 			
 logic_expression : rel_expression 	
@@ -1004,6 +1019,17 @@ rel_expression	: simple_expression
 		// }
 		symbolInfo *si = new symbolInfo(
 			$1->getName()+$2->getName()+$3->getName(),
+			"rel_expression"
+		);
+		si->setVarType("int");
+		$$=si;
+	}
+	|simple_expression error term
+	{
+		printf("assi simple expr err\n");
+		yyclearin; yyerrok; 
+		symbolInfo *si = new symbolInfo(
+			$1->getName(),
 			"rel_expression"
 		);
 		si->setVarType("int");
