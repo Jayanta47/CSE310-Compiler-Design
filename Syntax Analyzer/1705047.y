@@ -261,12 +261,15 @@ void yyerror(char *s)
 %type<symbol>expression_statement variable expression logic_expression rel_expression simple_expression term 
 %type<symbol>unary_expression factor argument_list arguments
 
+//%type<symbol>dumping_state dump_simple_expr dump_expr_statement
+%type<symbol>error_statement error_expression
+//%type<symbol>simple_expression_error // rel_expression_error //logic_expression_error
+
 
 // %left 
 // %right
 %nonassoc LOWER_THAN_ELSE 
-%nonassoc ELSE
-
+%nonassoc ELSE 
 
 
 %%
@@ -450,7 +453,6 @@ compound_statement : LCURL interimScopeAct statements RCURL
 		table->printAllScopeTable();
 		
 		table->ExitScope();
-		
 
 	}
 	| LCURL interimScopeAct RCURL
@@ -638,7 +640,8 @@ declaration_list : declaration_list COMMA ID
 	{
 		printf("printing declaration error\n");
 		printf("error-> %s\n", $1->getName().c_str());
-		yyclearin; yyerrok;
+		yyclearin; //yyerrok;
+		$$ = $1;
 		//table->printAllScopeTable();
 	}
 	;
@@ -656,6 +659,12 @@ statements : statement
 		fprintf(logFile, "At line no: %d statements : statements statement\n\n", lineCnt);
 		fprintf(logFile, "%s%s\n\n", $1->getName().c_str(), $2->getName().c_str());
 		$$=new symbolInfo($1->getName() + $2->getName()+"\n", "statements"); // needs further checking 
+	}
+	| statements error_statement
+	{
+		//fprintf(logFile, "At line no: %d statements : statements statement\n\n", lineCnt);
+		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		printf("Converging into statements\n");
 	}
 	;
 	   
@@ -762,7 +771,13 @@ statement : var_declaration
 		return_type = $2->getVarType();
 	}
 	;
-	  
+
+error_statement : error_expression
+	{
+		printf("error_statement : error_expression\n");
+		$$ = $1;
+	};
+
 expression_statement : SEMICOLON			
 	{
 		fprintf(logFile, "At line no: %d expression_statement : SEMICOLON\n\n", lineCnt);
@@ -779,10 +794,96 @@ expression_statement : SEMICOLON
 		symbolInfo *si = new symbolInfo($1->getName() + ";", "expression_statement");
 		si->setVarType($1->getVarType());
 		$$=si;
-		//type = "int";
-	} 
+	}
+	; 
+
+error_expression : rel_expression error
+	{
+		printf("rel_expression_error : rel_expression error => %s error\n", $1->getName().c_str());
+		//yyclearin; // clears the stack pointer 
+		yyerrok; // permission to call error
+		symbolInfo *si = new symbolInfo(
+			$1->getName(),
+			"error_expression"
+		);
+		$$=si;
+	}
+	| variable ASSIGNOP logic_expression error 
+	{
+		printf("variable ASSIGNOP logic_expression_error\n");
+		printf("%s = %s\n", $1->getName().c_str(), $3->getName().c_str());
+		$$ = new symbolInfo("" , "expression");
+		//yyclearin; 
+		yyerrok;
+	}
+	| simple_expression ADDOP error 
+	{
+		printf("error_expression : simple_expression ADDOP error\n");
+		yyclearin; // clears the stack pointer 
+		yyerrok; // permission to call error
+		symbolInfo *si = new symbolInfo(
+			$1->getName(),
+			"error_expression"
+		);
+		$$=si;
+	}
+	| simple_expression RELOP error
+	{
+		printf("error_expression : simple_expression RELOP error\n");
+		//yyclearin; // clears the stack pointer 
+		yyerrok; // permission to call error
+		symbolInfo *si = new symbolInfo(
+			$1->getName(),
+			"error_expression"
+		);
+		$$=si;
+	}
+	| error
+	{
+		printf("single error detected");
+		$$ = new symbolInfo("", "error");
+	}
 	;
+
+
+/* error_expression : expression 
+	{
+		printf("error_expression: expression\n");
+		yyerrok; yyclearin;
+		$$=new symbolInfo("", "");
+	}
+	| variable ASSIGNOP simple_expression_error
+	{
+		printf("expression dumping state\n");
+		printf("%s = %s\n", $1->getName().c_str(), $3->getName().c_str());
+		$$ = new symbolInfo("" , "expression");
+		yyclearin; yyerrok;
+	}
+	| simple_expression_error
+	{
+		printf("error_expression : dump_simple_expr\n");
+		$$=$1;
+	}
+	; */
+
+/* 
+error_expression : variable ASSIGNOP dump_simple_expr
+	{
+		printf("expression dumping state\n");
+		printf("%s = %s\n", $1->getName().c_str(), $3->getName().c_str());
+		$$ = new symbolInfo("" , "expression");
+		yyclearin; yyerrok;
+	}
+	| dump_simple_expr
+	{
+		printf("error_expression : dump_simple_expr\n");
+		$$=$1;
+	}
+	; */
+
 	  
+
+
 variable : ID 		
 	{
 		fprintf(logFile, "At line no: %d variable : ID\n\n", lineCnt);
@@ -811,6 +912,7 @@ variable : ID
 			fprintf(logFile, "Error at line %d : Type mismatch, %s is an array\n\n", lineCnt, x->getName().c_str());
 			SMNTC_ERR_COUNT++;
 		}
+		//printf("%s\n", $1->getName().c_str());
 	}
 	| ID LTHIRD expression RTHIRD 
 	{
@@ -875,7 +977,7 @@ variable : ID
 	;
 
 
- expression : logic_expression	
+ expression : logic_expression 
 	{
 		fprintf(logFile, "At line no: %d expression : logic_expression\n\n", lineCnt);
 		fprintf(logFile, "%s\n\n", $1->getName().c_str());
@@ -934,15 +1036,39 @@ variable : ID
 		}
 		type = $1->getVarType(); 
 	}
-		
 	;
-			
+
+/* logic_expression_error : logic_expression error
+	{
+		printf("logic_expression_error : logic_expression error => %s error\n", $1->getName().c_str());
+		yyclearin; // clears the stack pointer 
+		yyerrok; // permission to call error
+		symbolInfo *si = new symbolInfo(
+			$1->getName(),
+			"logic_expression_error"
+		);
+		$$=si;
+	}
+	| rel_expression LOGICOP rel_expression_error
+	{
+		printf("logic_expression_error : logic_expression error => %s error\n", $1->getName().c_str());
+		//yyclearin; // clears the stack pointer 
+		yyerrok; // permission to call error
+		symbolInfo *si = new symbolInfo(
+			$1->getName() + $2->getName(),
+			"logic_expression_error"
+		);
+		$$=si;
+	}
+	; */
+
 logic_expression : rel_expression 	
 	{
 		fprintf(logFile, "At line no: %d logic_expression : rel_expression\n\n", lineCnt);
 		fprintf(logFile, "%s\n\n", $1->getName().c_str());
 		$$=$1;
 		$$->setType("logic_expression");
+		printf("%s\n", $$->getName().c_str());
 	}
 	| rel_expression LOGICOP rel_expression 	
 	{
@@ -980,7 +1106,8 @@ logic_expression : rel_expression
 		$$=si;
 	}
 	;
-			
+
+
 rel_expression	: simple_expression 
 	{
 		fprintf(logFile, "At line no: %d rel_expression : simple_expression\n\n", lineCnt);
@@ -1024,18 +1151,8 @@ rel_expression	: simple_expression
 		si->setVarType("int");
 		$$=si;
 	}
-	|simple_expression error term
-	{
-		printf("assi simple expr err\n");
-		yyclearin; yyerrok; 
-		symbolInfo *si = new symbolInfo(
-			$1->getName(),
-			"rel_expression"
-		);
-		si->setVarType("int");
-		$$=si;
-	}	
 	;
+
 				
 simple_expression : term 
 	{

@@ -377,7 +377,8 @@ UNRECOGNIZED_CHAR_ERR .
 
 {UNRECOGNIZED_CHAR_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: Unrecognized character %s\n\n", lineCnt, yytext);        
+    fprintf(errorFile, "Error at line no %d: Unrecognized character %s\n\n", lineCnt, yytext);   
+    fprintf(logFile, "Error at line %d: Unrecognized character %s\n\n", lineCnt, yytext);        
 }
 
 
