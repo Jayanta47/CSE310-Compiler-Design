@@ -1,0 +1,15 @@
+int x,y,z; float a;
+
+int var(int-){
+}
+
+
+int main(){
+	int x-y+f-s,z;
+	a = 2 + = 6
+	#
+	x = 4;
+	
+	
+	return 0;	
+}
