@@ -24,7 +24,7 @@ Syntax Analyzer/*.out*
 Syntax Analyzer/*.o
 Syntax Analyzer/*.yy.c
 Syntax Analyzer/*.tab.*
-Syntax Analyzer/*.txt
+Syntax Analyzer/[^//]*.txt
 Syntax Analyzer/*.tab.*
 
 
