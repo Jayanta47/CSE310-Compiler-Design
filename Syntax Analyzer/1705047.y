@@ -110,31 +110,15 @@ void checkFunctionDef(std::string funcName, std::string returnType)
 	{
 		functionInfo *f = new functionInfo;
 		f->returnType = returnType;
-		f->onlyDefined = false;
+		f->onlyDeclared = false;
 		std::vector<param*> param_list;
-		// There can be multiple declarations of a parameter inside param_list
-		// Multiple declarations of same param raises error
+		
 		for (int i=0;i<temp_param_list.size();i++)
 		{
-			for (int j=0; j<param_list.size();j++)
+			if (temp_param_list[i]->param_type != "void")
 			{
-				if(param_list[j]->param_name == temp_param_list[i]->param_name &&
-					param_list[j]->param_type == temp_param_list[i]->param_type)
-				{
-					fprintf(logFile, "Error at line %d : Multiple declaration of %s in parameter\n\n", lineCnt, param_list[j]->param_name.c_str());
-					fprintf(errorFile, "Line no %d : Multiple declaration of %s in parameter\n\n", lineCnt, param_list[j]->param_name.c_str());
-					SMNTC_ERR_COUNT++;
-				}
-				else if (param_list[j]->param_name == temp_param_list[i]->param_name)
-				{
-					fprintf(logFile, "Error at line %d : Multiple declaration of %s (as type %s and %s) in parameter\n\n", 
-							lineCnt, param_list[j]->param_name.c_str());
-					fprintf(errorFile, "Line no %d : Multiple declaration of %s (as type %s and %s) in parameter\n\n", 
-							lineCnt, param_list[j]->param_name.c_str());
-					SMNTC_ERR_COUNT++;
-				}
-			}
-			param_list.push_back(temp_param_list[i]);
+				param_list.push_back(temp_param_list[i]);
+			}	
 		}
 		f->param_list = param_list;
 		//printf("inserting func name %s into table at line %d\n", funcName.c_str(), lineCnt);
@@ -142,17 +126,18 @@ void checkFunctionDef(std::string funcName, std::string returnType)
 	}
 	else if (x->getIdType()!="function")
 	{
-		fprintf(errorFile, "Line no %d : Multiple declaration of %s\n\n", lineCnt, funcName.c_str());
+		err_segm = "Multiple declaration of " + funcName;
+		writeError(err_segm);
 		SMNTC_ERR_COUNT++;
 	}
 	else if (!x->hasFuncPtr())
 	{
-		fprintf(logFile, "Line no %d : function previously defined but not properly structured\n\n", lineCnt);
+		writeError("Function "+funcName+" previously defined but not properly structured");
 		SMNTC_ERR_COUNT++;
 	}
 	else if (!x->funcDeclNotDef())
 	{
-		fprintf(logFile, "Line no %d : Multiple definitions of same function (name:%s)\n\n", lineCnt, funcName);
+		writeError("Multiple definitions of function " + funcName);
 		SMNTC_ERR_COUNT++;
 	}
 	else 
@@ -165,19 +150,20 @@ void checkFunctionDef(std::string funcName, std::string returnType)
 		//printf("checking return type for %s with return type = %s\n", x->getName().c_str(), x->getVarType().c_str());
 		if (returnType != x->getVarType())
 		{
-			fprintf(errorFile, "Line no %d : Return type mismatch with function declaration in function %s\n\n", lineCnt, x->getName().c_str());
-			fprintf(logFile, "Error at line %d : Return type mismatch with function declaration in function %s\n\n", lineCnt, x->getName().c_str());
+			writeError("Return type mismatch for function " + funcName);
 			SMNTC_ERR_COUNT++;
 		}
 		else if (x->getParamSize() == 1 && temp_param_list.size()==0 && x->getParamAt(0)->param_type == "void")
 		{
-			// didnt understand this
-			x->getFunctionInfo()->onlyDefined = false;
+			// function previously declared with param void
+			// No param in function def is given
+			x->getFunctionInfo()->onlyDeclared = false;
 		}
 		else if (x->getParamSize() == 0 && temp_param_list.size()==1 && temp_param_list[0]->param_type == "void")
 		{
-			// didnt understand this
-			x->getFunctionInfo()->onlyDefined = false;
+			// function previously declared with no param
+			// void is given as param in definition
+			x->getFunctionInfo()->onlyDeclared = false;
 		}
 		else 
 		{
@@ -186,8 +172,7 @@ void checkFunctionDef(std::string funcName, std::string returnType)
 
 			if (x->getParamSize() != temp_param_list.size())
 			{
-				fprintf(errorFile, "Line no %d : Total number of arguments mismatch with declaration in function %s\n\n", lineCnt, x->getName().c_str());
-				fprintf(logFile, "Error at line %d : Total number of arguments mismatch with declaration in function %s\n\n", lineCnt, x->getName().c_str());
+				writeError("Total number of arguments mismatch with declaration in function " + x->getName());
 				SMNTC_ERR_COUNT++;
 			}
 			else 
@@ -197,14 +182,16 @@ void checkFunctionDef(std::string funcName, std::string returnType)
 				{
 					if (temp_param_list[i]->param_type != x->getParamAt(i)->param_type)
 					{
-						fprintf(logFile, "Line no %d : Parameter Type mismatch\n\n", lineCnt);
+						err_segm = "Parameter type mismatch, expected " + x->getParamAt(i)->param_type +
+							", given " + temp_param_list[i]->param_type;
+						writeError(err_segm);
 						SMNTC_ERR_COUNT++;
 						break;
 					}
 				}
 				if (i == temp_param_list.size())
 				{
-					x->getFunctionInfo()->onlyDefined = false;
+					x->getFunctionInfo()->onlyDeclared = false;
 				}
 			}
 		}
@@ -220,14 +207,13 @@ void checkFunctionDec(std::string funcName, std::string returnType)
 	{
 		functionInfo *f = new functionInfo;
 		f->returnType = returnType;
-		f->onlyDefined = true;
+		f->onlyDeclared = true;
 		f->param_list = temp_param_list;
 		insertFuncIntoTable(funcName, f);
 	}
 	else 
 	{
-		fprintf(logFile, "Line no %d : Multiple definitions for function %s\n\n", lineCnt, funcName.c_str());
-		fprintf(errorFile, "Line no %d : Multiple definitions for function %s\n\n", lineCnt, funcName.c_str());
+		writeError("Multiple definitions for function " + funcName);
 		SMNTC_ERR_COUNT++;
 	}
 }
@@ -390,7 +376,7 @@ func_definition : func_definition_initP compound_statement
 	{
 		code_segm = $1->getName() + $2->getName();
 		writeToLog("func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statement");
-		writeTolog(code_segm, false);
+		writeToLog(code_segm, false);
 		$$ = new symbolInfo(code_segm, "func_definition");
 		$$->setVarType($1->getVarType());
 	}
@@ -398,7 +384,7 @@ func_definition : func_definition_initP compound_statement
 	{
 		code_segm = $1->getName() + $2->getName();
 		writeToLog("func_definition : type_specifier ID LPAREN RPAREN compound_statement");
-		writeTolog(code_segm, false);
+		writeToLog(code_segm, false);
 		$$ = new symbolInfo(code_segm, "func_definition");
 		$$->setVarType($1->getVarType());
 	}
@@ -425,35 +411,87 @@ func_definition_init : type_specifier ID LPAREN RPAREN
 parameter_list  : parameter_list COMMA type_specifier ID
 	{
 		code_segm = $1->getName() + "," + $3->getName() + " " + $4->getName();
+		bool duplicate = false;
+		bool voidType = false;
+		// checking if type specifier is void
+		if ($3->getName() == "void")
+		{
+			writeError("Parameter type cannot be void");
+			SMNTC_ERR_COUNT++;
+			voidType = true;
+		}
+		// There can be multiple declarations of a parameter inside param_list
+		// Multiple declarations of same param raises error
+		for (int i=0; i<temp_param_list.size(); i++)
+		{
+			if (temp_param_list[i]->param_name == $4->getName())
+			{
+				if (temp_param_list[i]->param_type == $3->getName())
+				{
+					err_segm = "Multiple declaration of " + $4->getName() + " in parameter";
+					writeError(err_segm);
+					if (!voidType) SMNTC_ERR_COUNT++;
+				}
+				else
+				{
+					err_segm = "Multiple declaration of " + $4->getName() + " (as type " + temp_param_list[i]->param_type +
+								" and " + $3->getName() + ") in parameter";
+					writeError(err_segm);
+					if (!voidType) SMNTC_ERR_COUNT++;
+				}
+				duplicate = true;	
+			}
+		}
+		$$ = new symbolInfo(code_segm, "parameter_list");
+		if (!duplicate && !voidType)
+		{
+			p = new param;
+			p->param_type = $3->getName();
+			p->param_name = $4->getName();
+			temp_param_list.push_back(p);
+		}
 		writeToLog("parameter_list : parameter_list COMMA type_specifier ID");
 		writeToLog(code_segm, false);
-		$$ = new symbolInfo(code_segm, "parameter_list");
-		p = new param;
-		p->param_type = $3->getName();
-		p->param_name = $4->getName();
-		temp_param_list.push_back(p);
 	}
 	| parameter_list COMMA type_specifier
 	{
 		code_segm = $1->getName() + "," + $3->getName();
-		writeToLog("parameter_list : parameter_list COMMA type_specifier");
-		writeToLog(code_segm, false);
 		$$ = new symbolInfo(code_segm, "parameter_list");
 		p = new param;
 		p->param_type = $3->getName();
 		p->param_name = "";
-		temp_param_list.push_back(p);
+		if ($3->getName() == "void" && temp_param_list.size()>0)
+		{
+			writeError("Invalid use of void in parameter");
+			SMNTC_ERR_COUNT++;
+		}
+		else temp_param_list.push_back(p);
+		writeToLog("parameter_list : parameter_list COMMA type_specifier");
+		writeToLog(code_segm, false);
 	}
 	| type_specifier ID
 	{
 		code_segm = $1->getName() + " " + $2->getName();
-		writeToLog("parameter_list : type_specifier ID");
-		writeToLog(code_segm, false);
+		
 		$$ = new symbolInfo(code_segm, "parameter_list");
 		p = new param;
 		p->param_type = $1->getName();
 		p->param_name = $2->getName();
-		temp_param_list.push_back(p);
+		if (temp_param_list.size() > 0)
+		{
+			temp_param_list.clear();
+		}
+		if ($1->getName() == "void")
+		{
+			writeError("Parameter type cannot be void");
+			SMNTC_ERR_COUNT++;
+		}
+		else
+		{
+			temp_param_list.push_back(p);
+		}
+		writeToLog("parameter_list : type_specifier ID");
+		writeToLog(code_segm, false);
 	}
 	| type_specifier
 	{
@@ -463,6 +501,10 @@ parameter_list  : parameter_list COMMA type_specifier ID
 		p = new param;
 		p->param_type = $1->getName();
 		p->param_name = "";
+		if (temp_param_list.size() > 0)
+		{
+			temp_param_list.clear();
+		}
 		temp_param_list.push_back(p);
 	}
 	| type_specifier error 
@@ -477,8 +519,8 @@ parameter_list  : parameter_list COMMA type_specifier ID
 compound_statement : LCURL interimScopeAct statements RCURL
 	{
 		code_segm = "{\n"+$3->getName()+"}";
-		writeTolog("compound_statement : LCURL statements RCURL");
-		writeTolog(code_segm, false);
+		writeToLog("compound_statement : LCURL statements RCURL");
+		writeToLog(code_segm, false);
 		
 		$$ = new symbolInfo(code_segm, "compound_statement");
 		table->printAllScopeTable();
@@ -490,8 +532,8 @@ compound_statement : LCURL interimScopeAct statements RCURL
 	| LCURL interimScopeAct RCURL
 	{
 		code_segm = "{\n}";
-		writeTolog("compound_statement : LCURL RCURL");
-		writeTolog(code_segm, false);
+		writeToLog("compound_statement : LCURL RCURL");
+		writeToLog(code_segm, false);
 		$$ = new symbolInfo(code_segm, "compound_statement");
 		table->printAllScopeTable();
 		table->ExitScope();
@@ -1022,7 +1064,7 @@ logic_expression : rel_expression
 		writeToLog("logic_expression : rel_expression"); writeToLog($1->getName(), false);
 		$$=$1;
 		$$->setType("logic_expression");
-		printf("%s\n", $$->getName().c_str()); // discard this
+		//printf("%s\n", $$->getName().c_str()); // discard this
 	}
 	| rel_expression LOGICOP rel_expression 	
 	{
