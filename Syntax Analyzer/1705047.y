@@ -30,6 +30,7 @@ struct variableInfo {
 };
 
 std::string code_segm;
+std::string err_segm;
 vector<string> code_vect;
 vector<symbolInfo*> arg_vect;
 vector<variableInfo*> var_vect;
@@ -42,8 +43,35 @@ param *p;
 std::string type, final_type;
 std::string name, final_name;
 std::string return_type;
+std::string current_return_type;
 
 // defined functions
+
+void writeToLog(std::string msg, bool lineSt = true)
+{
+	if (lineSt)
+	{
+		fprintf(logFile, "Line %d: %s\n\n", lineCnt, msg.c_str());
+	}
+	else
+	{
+		fprintf(logFile, "%s\n\n", msg.c_str());
+	}
+}
+
+void writeError(std::string msg, bool writeOnAll = true)
+{
+	if(writeOnAll)
+	{
+		fprintf(errorFile, "Error at line %d: %s\n\n", lineCnt, msg.c_str());
+		fprintf(logFile, "Error at line %d: %s\n\n", lineCnt, msg.c_str());
+	}
+	else
+	{
+		fprintf(errorFile, "Error at line %d: %s\n\n", lineCnt, msg.c_str());
+	}
+}
+
 void insertVarIntoTable(std::string varType, variableInfo *vp)
 {
 	symbolInfo *si = new symbolInfo(vp->var_name, "ID");
@@ -230,9 +258,26 @@ std::string stripArr(std::string Name)
 
 }
 
+bool isNumber(std::string str)
+{
+	std::regex b("[0-9]+");
+	return std::regex_match(str, b);
+}
+
+bool voidFuncCall(std::string Type)
+{
+	bool isVoid = (Type == "void")? true:false;
+	if (isVoid)
+	{
+		/* void function cannot be called in expression */
+		writeError("Void function call within expression");
+		SMNTC_ERR_COUNT++;
+	}
+	return isVoid;
+}
+
 void yyerror(char *s)
 {
-	//write your code
 	ERR_COUNT++;
 	fprintf(logFile, "Error at Line %d: %s\n\n", lineCnt, s);
 	fprintf(errorFile, "Error at Line %d: %s\n\n", lineCnt, s);
@@ -245,8 +290,8 @@ void yyerror(char *s)
 	symbolInfo *symbol;
 }
 
-%token IF ELSE FOR WHILE DO BREAK INT CHAR FLOAT DOUBLE VOID RETURN 
-%token SWITCH CASE DEFAULT CONTINUE ASSIGNOP LPAREN RPAREN LCURL RCURL 
+%token IF ELSE FOR WHILE DO INT CHAR FLOAT DOUBLE VOID RETURN 
+%token DEFAULT CONTINUE ASSIGNOP LPAREN RPAREN LCURL RCURL 
 %token LTHIRD RTHIRD COMMA SEMICOLON NOT PRINTLN INCOP DECOP PRINTF
 %token<symbol>CONST_INT
 %token<symbol>CONST_FLOAT
@@ -265,9 +310,6 @@ void yyerror(char *s)
 %type<symbol>error_statement error_expression
 //%type<symbol>simple_expression_error // rel_expression_error //logic_expression_error
 
-
-// %left 
-// %right
 %nonassoc LOWER_THAN_ELSE 
 %nonassoc ELSE 
 
@@ -276,98 +318,89 @@ void yyerror(char *s)
 
 start : program
 	{
-		fprintf(logFile, "At line no: %d start : program\n\n", lineCnt-1);// lineCnt is decreased by 1 
+		fprintf(logFile, "Line %d: start : program\n\n", lineCnt-1);// lineCnt is decreased by 1 
 												//because it read the last newline of input file and falsely incremented line count
 		for (auto str : code_vect)
 		{
-			fprintf(logFile, "%s\n", str.c_str());
+			writeToLog(str, false);
 		}
-		fprintf(logFile, "\n");
+		writeToLog("\n", false);
 	}
 	;
 
 program : program unit 
 	{
-		fprintf(logFile, "At line no: %d program : program unit\n\n", lineCnt);
+		writeToLog("program : program unit");
 		code_vect.push_back($2->getName());
 		for(int i = 0; i < code_vect.size(); i++)
 		{
-			fprintf(logFile, "%s\n", code_vect[i].c_str());
+			writeToLog(code_vect[i], false);
 		}
-		fprintf(logFile, "\n");
+		writeToLog("\n", false);
 	}
 	| unit
 	{
-		fprintf(logFile, "At line no: %d program : unit\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		writeToLog("program : unit");
+		writeToLog($1->getName());
 		code_vect.push_back($1->getName());
 	}
 	;
 	
 unit : var_declaration
 	{
-		//printf("Var dec\n");
-		//printf("%s\n\n", $1->getName().c_str());
-		fprintf(logFile, "At line no: %d unit : var_declaration\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
-		symbolInfo *si = new symbolInfo($1->getName(), "unit");
-		$$ = si;
-		//printf("var dec unit = %s\n", $1->getName().c_str());
-		//printf("exit var\n");
+		writeToLog("unit : var_declaration");
+		writeToLog($1->getName(), false);
+		$$ = new symbolInfo($1->getName(), "unit");
 	}
 	| func_declaration
 	{
-		fprintf(logFile, "At line no: %d unit : func_declaration\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
-		symbolInfo *si = new symbolInfo($1->getName(), "unit");
-		$$ = si;
+		writeToLog("unit : func_declaration");
+		writeToLog($1->getName());
+		$$ = new symbolInfo($1->getName(), "unit");
 	}
 	| func_definition
 	{
-		//printf("func def\n");
-		fprintf(logFile, "At line no: %d unit : func_definition\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
-		symbolInfo *si = new symbolInfo($1->getName(), "unit");
-		$$ = si;
+		writeToLog("unit : func_definition");
+		writeToLog($1->getName());
+		$$ = new symbolInfo($1->getName(), "unit");
 	}
 	;
      
 func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON
 	{
-		fprintf(logFile, "At line no: %d func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON\n\n", lineCnt);
-		code_segm = $1->getName() + " " + $2->getName() + "(" + $4->getName() + ");" ;
-		fprintf(logFile, "%s\n\n", code_segm.c_str());
+		code_segm = $1->getName() + " " + $2->getName() + "(" + $4->getName() + ");";
+		writeToLog("func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON");
+		writeToLog(code_segm, false);
 		$$ = new symbolInfo(code_segm, "func_declaration");
 		checkFunctionDec($2->getName(), $1->getName());
 		temp_param_list.clear();
 	}
 	| type_specifier ID LPAREN RPAREN SEMICOLON
 	{
-		fprintf(logFile, "At line no: %d func_declaration : type_specifier ID LPAREN RPAREN SEMICOLON\n\n", lineCnt);
 		code_segm = $1->getName() + " " + $2->getName() + "(" + ");" ;
-		fprintf(logFile, "%s\n\n", code_segm.c_str());
+		writeToLog("func_declaration : type_specifier ID LPAREN RPAREN SEMICOLON");
+		writeToLog(code_segm, false);
 		$$ = new symbolInfo(code_segm, "func_declaration");
 		checkFunctionDec($2->getName(), $1->getName());
+		temp_param_list.clear();
 	}
 	;
 		 
 func_definition : func_definition_initP compound_statement
 	{
-		fprintf(logFile, "At line no %d : func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statement\n\n", lineCnt);
 		code_segm = $1->getName() + $2->getName();
-		fprintf(logFile, "%s\n\n", code_segm.c_str());
-		symbolInfo *si = new symbolInfo(code_segm, "func_definition");
-		si->setVarType($1->getVarType());
-		$$=si;	
+		writeToLog("func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statement");
+		writeTolog(code_segm, false);
+		$$ = new symbolInfo(code_segm, "func_definition");
+		$$->setVarType($1->getVarType());
 	}
 	| func_definition_init compound_statement
 	{
-		fprintf(logFile, "At line no %d : func_definition : type_specifier ID LPAREN RPAREN compound_statement\n\n", lineCnt);
 		code_segm = $1->getName() + $2->getName();
-		fprintf(logFile, "%s\n\n", code_segm.c_str());
-		symbolInfo *si = new symbolInfo(code_segm, "func_definition");
-		si->setVarType($1->getVarType());
-		$$=si;
+		writeToLog("func_definition : type_specifier ID LPAREN RPAREN compound_statement");
+		writeTolog(code_segm, false);
+		$$ = new symbolInfo(code_segm, "func_definition");
+		$$->setVarType($1->getVarType());
 	}
 	;	
 
@@ -377,6 +410,7 @@ func_definition_initP : type_specifier ID LPAREN parameter_list RPAREN
 		code_segm = $1->getName() + " " + $2->getName() + "(" + $4->getName() + ")";
 		$$ = new symbolInfo(code_segm, "func_definition_initP");
 		$$->setVarType($1->getName());
+		current_return_type = $1->getName();
 	};
 
 func_definition_init : type_specifier ID LPAREN RPAREN 
@@ -385,15 +419,15 @@ func_definition_init : type_specifier ID LPAREN RPAREN
 		code_segm = $1->getName() + " " + $2->getName() + "()";
 		$$ = new symbolInfo(code_segm, "func_definition_init");
 		$$->setVarType($1->getName());
+		current_return_type = $1->getName();
 	};
 
 parameter_list  : parameter_list COMMA type_specifier ID
 	{
-		fprintf(logFile, "At line no %d : parameter_list : parameter_list COMMA type_specifier ID\n\n", lineCnt);
 		code_segm = $1->getName() + "," + $3->getName() + " " + $4->getName();
-		fprintf(logFile, "%s\n\n", code_segm.c_str());
-		symbolInfo *si = new symbolInfo(code_segm, "parameter_list");
-		$$=si;
+		writeToLog("parameter_list : parameter_list COMMA type_specifier ID");
+		writeToLog(code_segm, false);
+		$$ = new symbolInfo(code_segm, "parameter_list");
 		p = new param;
 		p->param_type = $3->getName();
 		p->param_name = $4->getName();
@@ -401,11 +435,10 @@ parameter_list  : parameter_list COMMA type_specifier ID
 	}
 	| parameter_list COMMA type_specifier
 	{
-		fprintf(logFile, "At line no %d : parameter_list : parameter_list COMMA type_specifier\n\n", lineCnt);
 		code_segm = $1->getName() + "," + $3->getName();
-		fprintf(logFile, "%s\n\n", code_segm.c_str());
-		symbolInfo *si = new symbolInfo(code_segm, "parameter_list");
-		$$=si;
+		writeToLog("parameter_list : parameter_list COMMA type_specifier");
+		writeToLog(code_segm, false);
+		$$ = new symbolInfo(code_segm, "parameter_list");
 		p = new param;
 		p->param_type = $3->getName();
 		p->param_name = "";
@@ -413,11 +446,10 @@ parameter_list  : parameter_list COMMA type_specifier ID
 	}
 	| type_specifier ID
 	{
-		fprintf(logFile, "At line no: %d parameter_list : type_specifier ID\n\n", lineCnt);
 		code_segm = $1->getName() + " " + $2->getName();
-		fprintf(logFile, "%s\n\n", code_segm.c_str());
-		symbolInfo *si = new symbolInfo(code_segm, "parameter_list");
-		$$ = si;
+		writeToLog("parameter_list : type_specifier ID");
+		writeToLog(code_segm, false);
+		$$ = new symbolInfo(code_segm, "parameter_list");
 		p = new param;
 		p->param_type = $1->getName();
 		p->param_name = $2->getName();
@@ -425,8 +457,8 @@ parameter_list  : parameter_list COMMA type_specifier ID
 	}
 	| type_specifier
 	{
-		fprintf(logFile, "At line no %d : parameter_list : type_specifier\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		writeToLog("parameter_list : type_specifier");
+		writeToLog($1->getName());
 		$$=$1; $$->setType("parameter_list");
 		p = new param;
 		p->param_type = $1->getName();
@@ -444,41 +476,42 @@ parameter_list  : parameter_list COMMA type_specifier ID
  		
 compound_statement : LCURL interimScopeAct statements RCURL
 	{
-		
-		fprintf(logFile, "At line no: %d compound_statement : LCURL statements RCURL\n\n", lineCnt);
 		code_segm = "{\n"+$3->getName()+"}";
-		fprintf(logFile, "%s\n\n", code_segm.c_str());
-		symbolInfo *si = new symbolInfo(code_segm, "compound_statement");
-		$$=si;
+		writeTolog("compound_statement : LCURL statements RCURL");
+		writeTolog(code_segm, false);
+		
+		$$ = new symbolInfo(code_segm, "compound_statement");
 		table->printAllScopeTable();
 		
 		table->ExitScope();
+		current_return_type = "";
 
 	}
 	| LCURL interimScopeAct RCURL
 	{
-		fprintf(logFile, "At line no %d : compound_statement : LCURL RCURL\n\n", lineCnt);
 		code_segm = "{\n}";
-		fprintf(logFile, "%s\n\n", code_segm.c_str());
-		symbolInfo *si = new symbolInfo(code_segm, "compound_statement");
-		$$=si;
+		writeTolog("compound_statement : LCURL RCURL");
+		writeTolog(code_segm, false);
+		$$ = new symbolInfo(code_segm, "compound_statement");
 		table->printAllScopeTable();
 		table->ExitScope();
+		current_return_type = "";
 	}
 	;
 
 interimScopeAct : 
 	{
 		table->EnterScope();
-		//printf("Enterred new scope\n\n");
-		if(temp_param_list.size()>1 || (temp_param_list.size() == 1 && temp_param_list[0]->param_type != "void"))
+		if(temp_param_list.size()>1 || 
+				(temp_param_list.size() == 1 && 
+				temp_param_list[0]->param_type != "void" ))
 		{
 			for(int i=0;i<temp_param_list.size();i++)
 			{
 				p = temp_param_list[i];
 				varPtr = new variableInfo;
 				varPtr->var_name = p->param_name;
-				varPtr->var_size = "-1";
+				varPtr->var_size = "-1"; // beacuse the grammar rule does not permit arrays to be parameter
 				insertVarIntoTable(p->param_type, varPtr);
 			}
 		}
@@ -488,20 +521,12 @@ interimScopeAct :
  		    
 var_declaration : type_specifier declaration_list SEMICOLON
 	{
-		//printf("Inside VAR dec\n");
-		fprintf(logFile, "At line no: %d var_declaration : type_specifier declaration_list SEMICOLON\n\n", lineCnt);
-		fprintf(logFile, "%s %s;\n\n", $1->getName().c_str(), $2->getName().c_str());
 		code_segm = $1->getName()+" "+$2->getName()+";";
-		//printf("var dec = %s\n", code_segm.c_str());
-		symbolInfo *si =  new symbolInfo(code_segm, "var_declaration");
-		//printf("symbolInfo = %s\n", si->getName().c_str());
-		$$=si;
-		//printf("var dec = %s\n", $$->getName().c_str());
+		$$ =  new symbolInfo(code_segm, "var_declaration");
 		std::string varType = $1->getName();
 		if ($1->getType() == "VOID") 
 		{
-			fprintf(errorFile, "Line no %d : Variable type cannot be void\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Variable type cannot be void\n\n", lineCnt);
+			writeError("Variable type cannot be void");
 			SMNTC_ERR_COUNT++;
 			varType = "int"; // default var type int
 		}
@@ -511,33 +536,25 @@ var_declaration : type_specifier declaration_list SEMICOLON
 			//printf("insert into table, %s\n", var_vect[i]->var_name.c_str());
 		} 
 		var_vect.clear();
+		writeToLog("var_declaration : type_specifier declaration_list SEMICOLON");
+		writeToLog(code_segm, false);
 	}
 	;
  		 
 type_specifier : INT
 	{
-		
-		fprintf(logFile, "At line no: %d type_specifier : INT\n\n", lineCnt);
-		fprintf(logFile, "int\n\n"); 
-		symbolInfo *type = new symbolInfo("int", "INT");
-		$$ = type;
+		writeToLog("type_specifier : INT"); writeToLog("int", false);
+		$$ = new symbolInfo("int", "INT");
 	}
 	| FLOAT
 	{
-		//printf("inside float\n");
-		//printf("At line no: %d type_specifier : FLOAT\n\n", lineCnt);
-		fprintf(logFile, "At line no: %d type_specifier : FLOAT\n\n", lineCnt);
-		fprintf(logFile, "float\n\n");
-		symbolInfo *type = new symbolInfo("float", "FLOAT");
-		$$ = type;
-		//printf("Exiting Float\n");
+		writeToLog("type_specifier : FLOAT"); writeToLog("float", false);
+		$$ = new symbolInfo("float", "FLOAT");
 	}
 	| VOID
 	{
-		fprintf(logFile, "At line no: %d type_specifier : VOID\n\n", lineCnt);
-		fprintf(logFile, "void\n\n");
-		symbolInfo *type = new symbolInfo("void", "VOID");
-		$$ = type;
+		writeToLog("type_specifier : VOID"); writeToLog("void", false);
+		$$ = new symbolInfo("void", "VOID");
 	}
 	;
  		
@@ -545,67 +562,61 @@ declaration_list : declaration_list COMMA ID
 	{
 		if (table->LookUpInCurrent($3->getName()) != nullptr)
 		{
-			//printf("%s\n", $3->getName().c_str());
-			fprintf(errorFile, "Line no %d : Multiple declaration of %s\n\n", lineCnt, $3->getName().c_str());
-			fprintf(logFile, "Error at line %d : Multiple declaration of %s\n\n", lineCnt, $3->getName().c_str());
+			err_segm = "Multiple declaration of " + $3->getName();
+			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
 		}
-
-		fprintf(logFile, "At line no: %d declaration_list : declaration_list COMMA ID\n\n", lineCnt);
-		fprintf(logFile, "%s, %s\n\n", $1->getName().c_str(), $3->getName().c_str());
-		symbolInfo *si = new symbolInfo($1->getName()+", "+$3->getName(), "declaration_list");
+		code_segm = $1->getName()+", "+$3->getName();
+		writeToLog("declaration_list : declaration_list COMMA ID");
+		writeToLog(code_segm, false);
+		$$ = new symbolInfo(code_segm, "declaration_list");
 
 		varPtr = new variableInfo;
 		varPtr->var_name = $3->getName();
-		varPtr->var_size = "-1"; // -1 for variable only;
+		varPtr->var_size = "-1"; // -1 for variable ID only;
 
 		var_vect.push_back(varPtr);
-		$$=si;
 
 	}
 	| declaration_list COMMA ID LTHIRD CONST_INT RTHIRD
 	{
 		if (table->LookUpInCurrent($3->getName()) != nullptr)
 		{
-			//printf("%s\n", $3->getName().c_str());
-			fprintf(errorFile, "Line no %d : Multiple declaration of %s\n\n", lineCnt, $3->getName().c_str());
-			fprintf(logFile, "Error at line %d : Multiple declaration of %s\n\n", lineCnt, $3->getName().c_str());
+			err_segm = "Multiple declaration of " + $3->getName();
+			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
 		}
 		
 		/* declaration of array */
-		fprintf(logFile, "At line no: %d declaration_list : declaration_list COMMA ID LTHIRD CONST_INT RTHIRD\n\n", lineCnt);
-		fprintf(logFile, "%s, %s[%s]\n\n", $1->getName().c_str(), $3->getName().c_str(), $5->getName().c_str());
-		symbolInfo *si = new symbolInfo($1->getName()+", "+$3->getName()+"["+$5->getName()+"]", "declaration_list");
+		code_segm = $1->getName()+", "+$3->getName()+"["+$5->getName()+"]";
+		writeToLog("declaration_list : declaration_list COMMA ID LTHIRD CONST_INT RTHIRD");
+		writeToLog(code_segm, false);
+		$$ = new symbolInfo(code_segm, "declaration_list");
 
 		varPtr = new variableInfo;
 		varPtr->var_name = $3->getName();
 		varPtr->var_size = $5->getName(); // size for array variable
 		var_vect.push_back(varPtr); 
-		$$=si;
 		
 	}
 	| ID
 	{
 		//printf("ID recog\n");
-		fprintf(logFile, "At line no: %d declaration_list : ID\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
 		$$=$1;
 		$$->setType("declaration_list");
 
 		varPtr = new variableInfo;
 		varPtr->var_name = $1->getName();
-		varPtr->var_size = "-1"; // -1 for variable only;
+		varPtr->var_size = "-1"; // -1 size for ID only;
 
 		var_vect.push_back(varPtr);
-		//printf("Exit ID\n");
 		if (table->LookUpInCurrent($1->getName()) != nullptr)
 		{
-			
-			fprintf(errorFile, "Line no %d : Multiple declaration of %s\n\n", lineCnt, $1->getName().c_str());
-			fprintf(logFile, "Error at line %d : Multiple declaration of %s\n\n", lineCnt, $1->getName().c_str());
+			err_segm = "Multiple declaration of " + $1->getName();
+			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
 		}
+		writeToLog("declaration_list : ID"); writeToLog($1->getName(), false);
 		
 	}
 	| ID LTHIRD CONST_INT RTHIRD
@@ -616,14 +627,14 @@ declaration_list : declaration_list COMMA ID
 			//sprintf(st, "%d", $1->getArrSize());
 			//printf("%s=%s\n", $1->getName().c_str(), st);
 			//printf("array %s = %s\n", $1->getName().c_str(), $1->getIdType().c_str());
-			fprintf(errorFile, "Line no %d : Multiple declaration of %s\n\n", lineCnt, $1->getName().c_str());
-			fprintf(logFile, "Error at line %d : Multiple declaration of %s\n\n", lineCnt, $1->getName().c_str());
+			err_segm = "Multiple declaration of " + $1->getName();
+			writeError(code_segm);
 			SMNTC_ERR_COUNT++;
 		}
 
 		/* declaration of array */
-		fprintf(logFile, "At line no: %d declaration_list : ID LTHIRD CONST_INT RTHIRD\n\n", lineCnt);
-		fprintf(logFile, "%s[%s]\n\n", $1->getName().c_str(), $3->getName().c_str());
+		code_segm = $1->getName()+"["+$3->getName()+"]";
+		
 		symbolInfo *si = new symbolInfo($1->getName()+"["+$3->getName()+"]", "declaration_list");
 
 		varPtr = new variableInfo;
@@ -633,6 +644,8 @@ declaration_list : declaration_list COMMA ID
 		si->setArrSize(atoi($3->getName().c_str()));
 		si->setIdType("array");
 		$$=si;
+		writeToLog("declaration_list : ID LTHIRD CONST_INT RTHIRD");
+		writeToLog(code_segm, false);
 		//printf("in array declaration , size = %d\n", atoi(varPtr->var_size.c_str()));
 		
 	}
@@ -648,17 +661,16 @@ declaration_list : declaration_list COMMA ID
  		  
 statements : statement
 	{
-		fprintf(logFile, "At line no: %d statements : statement\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		writeToLog("statements : statement"); writeToLog($1->getName(), false);
 		$$=$1;
 		$$->setName($1->getName()+"\n");
 		$$->setType("statements");
 	}
 	| statements statement
 	{
-		fprintf(logFile, "At line no: %d statements : statements statement\n\n", lineCnt);
-		fprintf(logFile, "%s%s\n\n", $1->getName().c_str(), $2->getName().c_str());
-		$$=new symbolInfo($1->getName() + $2->getName()+"\n", "statements"); // needs further checking 
+		code_segm = $1->getName() + $2->getName();
+		writeToLog("statements : statements statement"); writeToLog(code_segm, false);
+		$$=new symbolInfo(code_segm+"\n", "statements"); 
 	}
 	| statements error_statement
 	{
@@ -670,105 +682,125 @@ statements : statement
 	   
 statement : var_declaration
 	{
-		fprintf(logFile, "At line no: %d statement : var_declaration\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		writeToLog("statement : var_declaration"); writeToLog($1->getName(), false);
 		$$=$1; $$->setType("statement");
 	}
 	| expression_statement
 	{
-		fprintf(logFile, "At line no: %d statement : expression_statement\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
-		$$=$1;$$->setType("statement");
+		writeToLog("statement : expression_statement"); writeToLog($1->getName(), false);
+		$$=$1; $$->setType("statement");
 	}
 	| compound_statement
 	{
-		fprintf(logFile, "At line no: %d statement : compound_statement\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
-		$$=$1;$$->setType("statement");
+		writeToLog("statement : compound_statement"); writeToLog($1->getName(), false);
+		$$=$1; $$->setType("statement");
 	}
 	| FOR LPAREN expression_statement expression_statement expression RPAREN statement
 	{
-		fprintf(logFile, "At line no: %d statement : FOR LPAREN expression_statement expression_statement expression RPAREN statement\n\n", lineCnt);
-		std::string statementC = "for("+$3->getName()+$4->getName()+$5->getName()+")"+$7->getName();
-		fprintf(logFile, "%s\n\n", statementC.c_str());
-		symbolInfo *si = new symbolInfo(statementC, "statement");
-		$$=si;$$->setType("statement");
+		code_segm = "for("+$3->getName()+$4->getName()+$5->getName()+")"+$7->getName();
+		if (voidFuncCall($5->getVarType()))
+		{
+			/* void function cannot be called in expression */
+			$5->setVarType("int"); // default type is int
+		}
+		writeToLog("statement : FOR LPAREN expression_statement expression_statement expression RPAREN statement");
+		writeToLog(code_segm, false);
+		$$ = new symbolInfo(code_segm, "statement");
+		$$->setType("statement");
 	}
 	| IF LPAREN expression RPAREN statement %prec LOWER_THAN_ELSE
 	{
-		fprintf(logFile, "At line no: %d statement : IF LPAREN expression RPAREN statement\n\n", lineCnt);
-		std::string statementC = "if("+$3->getName()+")"+$5->getName();
-		fprintf(logFile, "%s\n\n", statementC.c_str());
-		symbolInfo *si = new symbolInfo(statementC, "statement");
-		$$=si;$$->setType("statement");
+		code_segm = "if("+$3->getName()+")"+$5->getName();
+		if (voidFuncCall($3->getVarType()))
+		{
+			/* void function cannot be called in expression */
+			$3->setVarType("int"); // default type is int
+		}
+		writeToLog("statement : IF LPAREN expression RPAREN statement");
+		writeToLog(code_segm, false);
+		$$ = new symbolInfo(code_segm, "statement");
+		$$->setType("statement");
 	}
 	| IF LPAREN expression RPAREN statement ELSE statement
 	{
-		fprintf(logFile, "At line no: %d statement : IF LPAREN expression RPAREN statement ELSE statement\n\n", lineCnt);
-		std::string statementC = "if("+$3->getName()+")"+$5->getName()+"else "+$7->getName();
-		fprintf(logFile, "%s\n\n", statementC.c_str());
-		symbolInfo *si = new symbolInfo(statementC, "statement");
-		$$=si; $$->setType("statement");
+		code_segm = "if("+$3->getName()+")"+$5->getName()+"else "+$7->getName();
+		if (voidFuncCall($3->getVarType()))
+		{
+			/* void function cannot be called in expression */
+			$3->setVarType("int"); // default type is int
+		}
+		writeToLog("statement : IF LPAREN expression RPAREN statement ELSE statement");
+		writeToLog(code_segm);
+		$$ = new symbolInfo(code_segm, "statement");
+		$$->setType("statement");
 	}
 	| WHILE LPAREN expression RPAREN statement
 	{
-		fprintf(logFile, "At line no: %d statement : WHILE LPAREN expression RPAREN statement\n\n", lineCnt);
-		std::string statementC = "while("+$3->getName()+")"+$5->getName();
-		fprintf(logFile, "%s\n\n", statementC.c_str());
-		symbolInfo *si = new symbolInfo(statementC, "statement");
-		$$=si; $$->setType("statement");
+		code_segm = "while("+$3->getName()+")"+$5->getName();
+		if (voidFuncCall($3->getVarType()))
+		{
+			/* void function cannot be called in expression */
+			$3->setVarType("int"); // default type is int
+		}
+		writeToLog("statement : WHILE LPAREN expression RPAREN statement");
+		writeToLog(code_segm, false);
+		$$ = new symbolInfo(code_segm, "statement");
+		$$->setType("statement");
 	}
 	| PRINTLN LPAREN ID RPAREN SEMICOLON
 	{
-		fprintf(logFile, "At line no: %d statement : PRINTLN LPAREN ID RPAREN SEMICOLON\n\n", lineCnt);
-		std::string statementC = "println("+$3->getName()+")"+";";
-		fprintf(logFile, "%s\n\n", statementC.c_str());
-
-		// check if the declared ID is declared or not
-		symbolInfo *x = table->LookUpInAll($3->getName());
-		if (x == nullptr)
-		{
-			fprintf(errorFile, "Line no %d : Undeclared variable %s\n\n", lineCnt, $3->getName().c_str());
-			fprintf(logFile, "Error at line %d : Undeclared variable %s\n\n", lineCnt, $3->getName().c_str());
-			SMNTC_ERR_COUNT++;
-		}
-		symbolInfo *si = new symbolInfo(statementC, "statement");
-		$$=si; $$->setType("statement");
-	}
-	| PRINTF LPAREN ID RPAREN SEMICOLON
-	{
-		fprintf(logFile, "At line no: %d statement : PRINTF LPAREN ID RPAREN SEMICOLON\n\n", lineCnt);
-		std::string statementC = "printf("+$3->getName()+")"+";";
-		fprintf(logFile, "%s\n\n", statementC.c_str());
+		code_segm = "println("+$3->getName()+")"+";";
 		
 		// check if the declared ID is declared or not
 		symbolInfo *x = table->LookUpInAll($3->getName());
 		if (x == nullptr)
 		{
-			fprintf(errorFile, "Line no %d : Undeclared variable %s\n\n", lineCnt, $3->getName().c_str());
-			fprintf(logFile, "Error at line %d : Undeclared variable %s\n\n", lineCnt, $3->getName().c_str());
+			err_segm = "Undeclared variable " + $3->getName();
+			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
 		}
-		symbolInfo *si = new symbolInfo(statementC, "statement");
-		$$=si; $$->setType("statement");
+		$$ = new symbolInfo(code_segm, "statement");
+		$$->setType("statement");
+		writeToLog("statement : PRINTLN LPAREN ID RPAREN SEMICOLON"); writeToLog(code_segm, false);
+
+	}
+	| PRINTF LPAREN ID RPAREN SEMICOLON
+	{
+		code_segm = "printf("+$3->getName()+")"+";";
+		
+		// check if the declared ID is declared or not
+		symbolInfo *x = table->LookUpInAll($3->getName());
+		if (x == nullptr)
+		{
+			err_segm = "Undeclared variable " + $3->getName();
+			writeError(err_segm);
+			SMNTC_ERR_COUNT++;
+		}
+		$$ = new symbolInfo(code_segm, "statement");
+		$$->setType("statement");
+		writeToLog("statement : PRINTF LPAREN ID RPAREN SEMICOLON"); writeToLog(code_segm, false);
 	}
 	| RETURN expression SEMICOLON
 	{
-		fprintf(logFile, "At line no: %d statement : RETURN expression SEMICOLON\n\n", lineCnt);
-		std::string statementC = "return "+$2->getName()+";";
-		fprintf(logFile, "%s\n\n", statementC.c_str());
-		symbolInfo *si = new symbolInfo(statementC, "statement");
-		$$=si; $$->setType("statement");
+		code_segm = "return "+$2->getName()+";";
+		$$ = new symbolInfo(code_segm, "statement");
+		$$->setType("statement");
 
-		if ($2->getVarType() == "void")
+		if (voidFuncCall($2->getVarType()))
 		{
-			/* function cannot be called in expression */
-			fprintf(errorFile, "Line no %d : Void function call within expression\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Void function call within expression\n\n", lineCnt);
-			SMNTC_ERR_COUNT++;
+			/* void function cannot be called in expression */
+			$2->setVarType("int"); // default type is int
 		}
 
 		return_type = $2->getVarType();
+		if ($2->getVarType() != current_return_type)
+		{
+			SMNTC_ERR_COUNT++;
+			err_segm = "Type mismatch, return type expected: " + current_return_type
+						+ " found: " + $2->getVarType();
+			writeError(err_segm);
+		}
+		writeToLog("statement : RETURN expression SEMICOLON"); writeToLog(code_segm, false);
 	}
 	;
 
@@ -780,20 +812,21 @@ error_statement : error_expression
 
 expression_statement : SEMICOLON			
 	{
-		fprintf(logFile, "At line no: %d expression_statement : SEMICOLON\n\n", lineCnt);
-		fprintf(logFile, ";\n\n");
-
-		symbolInfo *si = new symbolInfo(";", "expression_statement");
-		$$ = si;
-		//type = "int";
+		writeToLog("expression_statement : SEMICOLON"); writeToLog(";", false);
+		$$ = new symbolInfo(";", "expression_statement");
 	}
 	| expression SEMICOLON
 	{
-		fprintf(logFile, "At line no: %d expression_statement : expression SEMICOLON\n\n", lineCnt);
-		fprintf(logFile, "%s;\n\n", $1->getName().c_str());
-		symbolInfo *si = new symbolInfo($1->getName() + ";", "expression_statement");
-		si->setVarType($1->getVarType());
-		$$=si;
+		code_segm = $1->getName() + ";";
+		writeToLog("expression_statement : expression SEMICOLON"); 
+		writeToLog(code_segm, false);
+		if (voidFuncCall($1->getVarType()))
+		{
+			/* void function cannot be called in expression */
+			$1->setVarType("int");
+		}
+		$$ = new symbolInfo(code_segm, "expression_statement");
+		$$->setVarType($1->getVarType());
 	}
 	; 
 
@@ -846,49 +879,8 @@ error_expression : rel_expression error
 	;
 
 
-/* error_expression : expression 
-	{
-		printf("error_expression: expression\n");
-		yyerrok; yyclearin;
-		$$=new symbolInfo("", "");
-	}
-	| variable ASSIGNOP simple_expression_error
-	{
-		printf("expression dumping state\n");
-		printf("%s = %s\n", $1->getName().c_str(), $3->getName().c_str());
-		$$ = new symbolInfo("" , "expression");
-		yyclearin; yyerrok;
-	}
-	| simple_expression_error
-	{
-		printf("error_expression : dump_simple_expr\n");
-		$$=$1;
-	}
-	; */
-
-/* 
-error_expression : variable ASSIGNOP dump_simple_expr
-	{
-		printf("expression dumping state\n");
-		printf("%s = %s\n", $1->getName().c_str(), $3->getName().c_str());
-		$$ = new symbolInfo("" , "expression");
-		yyclearin; yyerrok;
-	}
-	| dump_simple_expr
-	{
-		printf("error_expression : dump_simple_expr\n");
-		$$=$1;
-	}
-	; */
-
-	  
-
-
 variable : ID 		
 	{
-		fprintf(logFile, "At line no: %d variable : ID\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
-
 		$$ = $1;
 		$$->setIdType("variable");
 
@@ -900,376 +892,270 @@ variable : ID
 		}
 		else 
 		{
-			fprintf(errorFile, "Line no %d : Undeclared variable %s\n\n", lineCnt, $$->getName().c_str());
-			fprintf(logFile, "Error at line %d : Undeclared variable %s\n\n", lineCnt, $$->getName().c_str());
+			err_segm = "Undeclared variable " + $$->getName();
+			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
-			$$->setVarType("int");
+			$$->setVarType("int"); // assign the default type int
 		}
 
-		if (x != nullptr && x->getArrSize()!=-1)
+		if (x != nullptr && (x->getArrSize()!=-1 || x->getIdType() == "array"))
 		{
-			fprintf(errorFile, "Line no %d : Type mismatch, %s is an array\n\n", lineCnt, x->getName().c_str());
-			fprintf(logFile, "Error at line %d : Type mismatch, %s is an array\n\n", lineCnt, x->getName().c_str());
+			err_segm = "Type mismatch, " + x->getName() + " is an array";
+			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
 		}
-		//printf("%s\n", $1->getName().c_str());
+		
+		writeToLog("variable : ID"); writeToLog($1->getName(), false);
 	}
 	| ID LTHIRD expression RTHIRD 
 	{
-		fprintf(logFile, "At line no: %d variable : ID LTHIRD expression RTHIRD\n\n", lineCnt);
-		fprintf(logFile, "%s[%s]\n\n", $1->getName().c_str(), $3->getName().c_str());
+		code_segm = $1->getName() + "[" + $3->getName() + "]";
+		symbolInfo *si = new symbolInfo(code_segm, "variable");
+		si->setIdType("array");
 
 		//check if expression(index) is int
-		if ($3->getVarType() != "int")
+		if ($3->getVarType() != "int" || !isNumber($3->getName()))
 		{
 			SMNTC_ERR_COUNT++;
-			fprintf(errorFile, "Line no %d : Expression inside third brackets not an integer\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Expression inside third brackets not an integer\n\n", lineCnt);
+			writeError("Expression inside third brackets not an integer");
 		}
 
-		// check if expression is calling void function
-		if ($3->getVarType() == "void")
-		{
-			/* function cannot be called in expression */
-			fprintf(errorFile, "Line no %d : Void function call within expression\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Void function call within expression\n\n", lineCnt);
-			SMNTC_ERR_COUNT++;
-		}
-
-		symbolInfo *si = new symbolInfo(
-			$1->getName() + "[" + $3->getName() + "]",
-			"variable"
-		);
+		/* void function cannot be called in expression */
+		voidFuncCall($1->getVarType());
 		
-		si->setIdType("array");
 		symbolInfo *sts = table->LookUpInAll($1->getName());
 		//printf("variable sts check  name == %s, size = %d type==%s\n", sts->getName().c_str(), sts->getArrSize(), sts->getIdType().c_str());
 		if (sts == nullptr) {
-			fprintf(errorFile, "Line no %d : Undeclared variable %s\n\n", lineCnt, $$->getName().c_str());
-			fprintf(logFile, "Error at line %d : Undeclared variable %s\n\n", lineCnt, $$->getName().c_str());
+			err_segm = "Undeclared variable " + $1->getName();
+			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
 			si->setVarType("int");
 		}
 		else if (sts->getIdType() != "array" || sts->getArrSize() == -1) // checking if array or not
 		{
-			//printf("error here in sts\n");
-			fprintf(errorFile, "Line no %d : Type mismatch(not array)\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Type mismatch(not array)\n\n", lineCnt);
+			err_segm = "Type mismatch, " + sts->getName() + " is not an array";
+			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
+			si->setVarType("int");
 		}
 		else 
 		{
 			si->setVarType(sts->getVarType());
-			int index = atoi($3->getName().c_str());
+			int index = ($3->getVarType()=="int")?atoi($3->getName().c_str()):0;
 			//printf("%s\n", $3->getVarType().c_str());
 			if (index>=sts->getArrSize() && $3->getVarType()=="int")
 			{
 				SMNTC_ERR_COUNT++;
-				fprintf(errorFile, "Line no %d : Array index out of bound\n\n", lineCnt);
-				fprintf(logFile, "Error at line %d : Array index out of bound\n\n", lineCnt);
+				writeError("Array index out of bound");
 			}
 			else si->arrIndex = index;
 			si->setArrSize(sts->getArrSize());
 		}
 		$$=si;
-
+		writeToLog("variable : ID LTHIRD expression RTHIRD");
+		writeToLog(code_segm, false);
 	}
 	;
 
 
  expression : logic_expression 
 	{
-		fprintf(logFile, "At line no: %d expression : logic_expression\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		writeToLog("expression : logic_expression"); writeToLog($1->getName(), false);
 		$$=$1;
 		$$->setType("expression");
 	}
 	| variable ASSIGNOP logic_expression
 	{
-		fprintf(logFile, "At line no: %d expression : variable ASSIGNOP logic_expression\n\n", lineCnt);
-		fprintf(logFile, "%s = %s\n\n", $1->getName().c_str(), $3->getName().c_str());
-		
-		if ($3->getVarType() == "void")
-		{
-			/* function cannot be called in expression */
-			fprintf(errorFile, "Line no %d : Void function call within expression\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Void function call within expression\n\n", lineCnt);
-			SMNTC_ERR_COUNT++;
-			$3->setType("int");
-		}
-		if ($1->getVarType() != $3->getVarType() ) {
-			if ($1->getVarType() == "float" && $3->getVarType() != "void")
-			{
-				// do nothing
-			}
-			else
+		code_segm = $1->getName() + "=" + $3->getName();
+		$$ = new symbolInfo(code_segm, "expression");
+		$$->setVarType($1->getVarType());
+
+		// checking if the operands on both sides have same type
+		// or if left operand has higher precedence than operand on right
+		if ($1->getVarType() != $3->getVarType()) {
+			if (!($1->getVarType() == "float" && $3->getVarType() != "void"))
 			{
 				//printf("%s type=%s, %s type=%s\n",$1->getName().c_str(), $1->getVarType().c_str(), $3->getName().c_str(), $3->getVarType().c_str());
-				fprintf(errorFile, "Line no %d : Type mismatch\n\n", lineCnt);
-				fprintf(logFile, "Error at line %d : Type mismatch\n\n", lineCnt);
+				writeError("Type mismatch");
 				SMNTC_ERR_COUNT++;
 			}
-			
 		}
 
+		if (voidFuncCall($3->getVarType()))
+		{
+			/* void function cannot be called in expression */
+			$3->setVarType("int");
+		}
 
-		$$ = new symbolInfo($1->getName() + "=" + $3->getName(), "expression");
-		std::string searchName;
+		// this part is abandoned because variable is already checked if
+		// array or variable while reducing into variable from ID/ID [expr]
+
+		// needs checking
+		// std::string searchName;
 		
-		if (isNameOfArr($1->getName()))
-		{
-			searchName = stripArr($1->getName());
-		}
-		else
-		{
-			searchName = $1->getName();
-		}
-		//printf("%s\n", searchName.c_str());
-		symbolInfo *x = table->LookUpInAll(searchName);
-		if (x==nullptr) {
-			//fprintf(errorFile, "Line no %d : Variable not declared in this scope\n\n", lineCnt);
-			//SMNTC_ERR_COUNT++;
-			$$->setVarType("int");
-		}
-		else {
-			$$->setVarType(x->getVarType());
-		}
+		// if (isNameOfArr($1->getName()))
+		// {
+		// 	searchName = stripArr($1->getName());
+		// }
+		// else
+		// {
+		// 	searchName = $1->getName();
+		// }
+		// //printf("%s\n", searchName.c_str());
+		// symbolInfo *x = table->LookUpInAll(searchName);
+		// if (x==nullptr) {
+		// 	//fprintf(errorFile, "Line no %d : Variable not declared in this scope\n\n", lineCnt);
+		// 	//SMNTC_ERR_COUNT++;
+		// 	$$->setVarType("int");
+		// }
+		
 		type = $1->getVarType(); 
+
+		writeToLog("expression : variable ASSIGNOP logic_expression"); 
+		writeToLog(code_segm, false);
 	}
 	;
 
-/* logic_expression_error : logic_expression error
-	{
-		printf("logic_expression_error : logic_expression error => %s error\n", $1->getName().c_str());
-		yyclearin; // clears the stack pointer 
-		yyerrok; // permission to call error
-		symbolInfo *si = new symbolInfo(
-			$1->getName(),
-			"logic_expression_error"
-		);
-		$$=si;
-	}
-	| rel_expression LOGICOP rel_expression_error
-	{
-		printf("logic_expression_error : logic_expression error => %s error\n", $1->getName().c_str());
-		//yyclearin; // clears the stack pointer 
-		yyerrok; // permission to call error
-		symbolInfo *si = new symbolInfo(
-			$1->getName() + $2->getName(),
-			"logic_expression_error"
-		);
-		$$=si;
-	}
-	; */
 
 logic_expression : rel_expression 	
 	{
-		fprintf(logFile, "At line no: %d logic_expression : rel_expression\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		writeToLog("logic_expression : rel_expression"); writeToLog($1->getName(), false);
 		$$=$1;
 		$$->setType("logic_expression");
-		printf("%s\n", $$->getName().c_str());
+		printf("%s\n", $$->getName().c_str()); // discard this
 	}
 	| rel_expression LOGICOP rel_expression 	
 	{
-		fprintf(logFile, "At line no: %d logic_expression : rel_expression LOGICOP rel_expression\n\n", lineCnt);
-		fprintf(logFile, "%s%s%s\n\n", $1->getName().c_str(),
-				$2->getName().c_str(), $3->getName().c_str());
+		code_segm = $1->getName() + $2->getName() + $3->getName();
 		
-		/* type check */
-		if ($1->getVarType() == "void")
-		{
-			/* function cannot be called in expression */
-			fprintf(errorFile, "Line no %d : void function call within expression\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : void function call within expression\n\n", lineCnt);
-			SMNTC_ERR_COUNT++;
-		}
-		if ($3->getVarType() == "void")
-		{
-			/* function cannot be called in expression */
-			fprintf(errorFile, "Line no %d : Void function call within expression\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Void function call within expression\n\n", lineCnt);
-			SMNTC_ERR_COUNT++;
-		}
-		/* Not exactly necessary, because rel_expression is set to int in shifting procedure */
+		$$ = new symbolInfo(code_segm, "logic_expression");
+		$$->setVarType("int");
+
+		/* void function cannot be called in expression */
+		voidFuncCall($1->getVarType());
+		voidFuncCall($3->getVarType());
+		
 		if ($1->getVarType() != "int" || $3->getVarType() != "int")
 		{
 			SMNTC_ERR_COUNT++;
-			fprintf(errorFile, "Line no %d : Non-Integer operand in relational operator\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Non-Integer operand in relational operator\n\n", lineCnt);
+			writeError("Non-Integer operand in relational operator");
 		}
-		symbolInfo *si = new symbolInfo(
-			$1->getName() + $2->getName() + $3->getName(),
-			"logic_expression"
-		);
-		si->setVarType("int");
-		$$=si;
+		
+		writeToLog("logic_expression : rel_expression LOGICOP rel_expression"); 
+		writeToLog(code_segm, false);
 	}
 	;
 
 
 rel_expression	: simple_expression 
 	{
-		fprintf(logFile, "At line no: %d rel_expression : simple_expression\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		writeToLog("rel_expression : simple_expression"); writeToLog($1->getName(), false);
 		$$=$1;
 		$$->setType("rel_expression");
 	}
 	| simple_expression RELOP simple_expression
 	{
-		fprintf(logFile, "At line no: %d rel_expression : simple_expression RELOP simple_expression\n\n", lineCnt);
-		fprintf(logFile, "%s%s%s\n\n", $1->getName().c_str(),
-				$2->getName().c_str(),
-				$3->getName().c_str());
+		code_segm = $1->getName()+$2->getName()+$3->getName();
+		$$ = new symbolInfo(code_segm, "rel_expression");
+		$$->setVarType("int");
 
-		/* checking function call */
-		if ($1->getVarType() == "void")
-		{
-			/* function cannot be called in expression */
-			fprintf(errorFile, "Line no %d : Void function call within expression\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Void function call within expression\n\n", lineCnt);
-			SMNTC_ERR_COUNT++;
-		}
-		if ($3->getVarType() == "void")
-		{
-			/* function cannot be called in expression */
-			fprintf(errorFile, "Line no %d : Void function call within expression\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Void function call within expression\n\n", lineCnt);
-			SMNTC_ERR_COUNT++;
-		}
+		/* void function cannot be called in expression */
+		voidFuncCall($1->getVarType());
+		voidFuncCall($3->getVarType());
 
-		// if ($1->getVarType() != "int" || $3->getVarType() != "int")  // abandoned for not included in test cases
+		// if ($1->getVarType() != "int" || $3->getVarType() != "int")  // abandoned for not being included in test cases
 		// {
 		// 	SMNTC_ERR_COUNT++;
 		// 	fprintf(errorFile, "Line no %d : Non-Integer operand in RELOP operation\n\n", lineCnt);
 		// 	fprintf(logFile, "Error at line %d : Non-Integer operand in RELOP operation\n\n", lineCnt);
 		// }
-		symbolInfo *si = new symbolInfo(
-			$1->getName()+$2->getName()+$3->getName(),
-			"rel_expression"
-		);
-		si->setVarType("int");
-		$$=si;
+		writeToLog("rel_expression : simple_expression RELOP simple_expression");
+		writeToLog(code_segm, false);
 	}
 	;
 
 				
 simple_expression : term 
 	{
-		fprintf(logFile, "At line no: %d simple_expression : term\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		writeToLog("simple_expression : term"); writeToLog($1->getName(), false);
 		$$=$1;
 		$$->setType("simple_expression");
 	}
 	| simple_expression ADDOP term 
 	{
-		fprintf(logFile, "At line no: %d simple_expression : simple_expression ADDOP term\n\n", lineCnt);
-		fprintf(logFile, "%s%s%s\n\n", $1->getName().c_str(),
-			$2->getName().c_str(),
-			$3->getName().c_str());
-		symbolInfo *si = new symbolInfo(
-			$1->getName() + $2->getName() + $3->getName(),
-			"simple_expression"
-		);
-		$$=si;
+		code_segm = $1->getName() + $2->getName() + $3->getName();
+		$$ = new symbolInfo(code_segm, "simple_expression");
+		$$->setVarType("int");
 		
-		/* type check */
-		if ($1->getVarType() == "void")
-		{
-			/* function cannot be called in expression */
-			fprintf(errorFile, "Line no %d : Void function call within expression\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Void function call within expression\n\n", lineCnt);
-			SMNTC_ERR_COUNT++;
-			$1->setVarType("int");
-		}
-		if ($3->getVarType() == "void")
-		{
-			/* function cannot be called in expression */
-			fprintf(errorFile, "Line no %d : Void function call within expression\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Void function call within expression\n\n", lineCnt);
-			SMNTC_ERR_COUNT++;
-			$3->setVarType("int");
-		}
-
+		/* void function cannot be called in expression */
+		voidFuncCall($1->getVarType());
+		voidFuncCall($3->getVarType());
+		
 		if ($1->getVarType() == "float" || $3->getVarType() == "float")
 		{
 			$$->setVarType("float");
 		}
-		else $$->setVarType("int");
+
+		writeToLog("simple_expression : simple_expression ADDOP term");
+		writeToLog(code_segm, false);
 	}
 	;
 					
 term :	unary_expression
 	{
-		fprintf(logFile, "At line no: %d term : unary_expression\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		writeToLog("term : unary_expression"); writeToLog($1->getName(), false);
 		$$=$1;
 		$$->setType("term");
 	}
 	|  term MULOP unary_expression
 	{
-		fprintf(logFile, "At line no: %d term : term MULOP unary_expression\n\n", lineCnt);
-		fprintf(logFile, "%s%s%s\n\n", $1->getName().c_str(), $2->getName().c_str(), $3->getName().c_str());
-		symbolInfo *si = new symbolInfo(
-			$1->getName() + $2->getName() + $3->getName(),
-			"term"
-		);
-		$$=si;
-		// checking for MULOP(%) mismatch
-		if ($1->getVarType() == "void")
-		{
-			/* function cannot be called in expression */
-			fprintf(errorFile, "Line no %d : Void function call within expression\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Void function call within expression\n\n", lineCnt);
-			SMNTC_ERR_COUNT++;
-			$1->setVarType("int");
-		}
-		if ($3->getVarType() == "void")
-		{
-			/* function cannot be called in expression */
-			fprintf(errorFile, "Line no %d : Void function call within expression\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Void function call within expression\n\n", lineCnt);
-			SMNTC_ERR_COUNT++;
-			$3->setVarType("int");
-		}
+		code_segm = $1->getName() + $2->getName() + $3->getName();
+		$$ = new symbolInfo(code_segm, "term");
+		$$->setVarType("int");
+
+		/* void function cannot be called in expression */
+		voidFuncCall($1->getVarType());
+		voidFuncCall($3->getVarType());
 		
+		// checking for MULOP(%) mismatch
 		if ($2->getName() == "%") 
 		{
-			$$->setVarType("int");
 			if ($1->getVarType() != "int" || $3->getVarType() != "int")
 			{
 				SMNTC_ERR_COUNT++;
-				fprintf(errorFile, "Line no %d : Non-Integer operand on modulus operator\n\n", lineCnt);
-				fprintf(logFile, "Error at line %d : Non-Integer operand on modulus operator\n\n", lineCnt);
+				writeError("Non-Integer operand on modulus operator");
 			}
 			if ($3->getName() == "0")
 			{
 				SMNTC_ERR_COUNT++;
-				fprintf(errorFile, "Line no %d : Modulus by Zero\n\n", lineCnt);
-				fprintf(logFile, "Error at line %d : Modulus by Zero\n\n", lineCnt);	
+				writeError("Modulus by Zero");	
 			}
 		}
 		else 
 		{
+			// type setting
+			// if any operator on MULOP is float, then the result should be 
+			// type casted to float
 			if ($3->getVarType() == "float" || $1->getVarType() == "float")
 			{
 				$$->setVarType("float");
 			}
-			else $$->setVarType("int");
 		}
+
+		writeToLog("term : term MULOP unary_expression"); 
+		writeToLog(code_segm, false);
 	}
 	;
 
 unary_expression : ADDOP unary_expression  
 	{
-		fprintf(logFile, "At line no: %d unary_expression : ADDOP unary_expression\n\n", lineCnt);
-		fprintf(logFile, "%s%s\n\n", $1->getName().c_str(), $2->getName().c_str());
-		symbolInfo *si = new symbolInfo($1->getName()+$2->getName(), "unary_expression");
+		code_segm = $1->getName()+$2->getName();
+		writeToLog("unary_expression : ADDOP unary_expression"); writeToLog(code_segm, false);
+		symbolInfo *si = new symbolInfo(code_segm, "unary_expression");
 		if ($2->getVarType() == "void")
 		{
-			/* function cannot be called in expression */
-			fprintf(errorFile, "Line no %d : Void function call within expression\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Void function call within expression\n\n", lineCnt);
+			/* void function cannot be called in expression */
+			writeError("Void function call within expression");
 			SMNTC_ERR_COUNT++;
 			si->setVarType("int");
 		}
@@ -1280,26 +1166,22 @@ unary_expression : ADDOP unary_expression
 	}
 	| NOT unary_expression 
 	{
-		fprintf(logFile, "At line no: %d unary_expression : NOT unary_expression\n\n", lineCnt);
-		fprintf(logFile, "!%s\n\n", $2->getName().c_str());
-		symbolInfo *si = new symbolInfo("!"+$2->getName(), "unary_expression");
-		if ($2->getVarType() == "void")
+		code_segm = "!"+$2->getName();
+		writeToLog("unary_expression : NOT unary_expression"); writeToLog(code_segm, false);
+		$$ = new symbolInfo(code_segm, "unary_expression");
+		
+		if (voidFuncCall($2->getVarType()))
 		{
-			/* function cannot be called in expression */
-			fprintf(errorFile, "Line no %d : Void function call within expression\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Void function call within expression\n\n", lineCnt);
-			SMNTC_ERR_COUNT++;
-			si->setVarType("int");
+			/* void function cannot be called in expression */
+			$$->setVarType("int");
 		}
 		else {
-			si->setVarType($2->getVarType());
+			$$->setVarType($2->getVarType());
 		}
-		$$=si;
 	}
 	| factor 
 	{
-		fprintf(logFile, "At line no: %d unary_expression : factor\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		writeToLog("unary_expression : factor"); writeToLog($1->getName(), false);
 		$$=$1;
 		$$->setType("unary_expression");
 	}
@@ -1307,51 +1189,47 @@ unary_expression : ADDOP unary_expression
 
 factor	: variable 
 	{
-		fprintf(logFile, "At line no: %d factor : variable\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		writeToLog("factor : variable"); writeToLog($1->getName(), false);
 		$$=$1;
 		$$->setType("factor");
 	}
 	| ID LPAREN argument_list RPAREN
 	{
-		fprintf(logFile, "At line no: %d factor : ID LPAREN argument_list RPAREN\n\n", lineCnt);
-		fprintf(logFile, "%s(%s)\n\n", $1->getName().c_str(), $3->getName().c_str());
-		//printf("%s\n", $1->getName().c_str());
-		/* unfinished - check if function and arguments list match*/
-		$$ = new symbolInfo($1->getName() + "(" + $3->getName() + ")", "factor");
+		code_segm = $1->getName() + "(" + $3->getName() + ")";
+		
+		$$ = new symbolInfo(code_segm, "factor");
 		symbolInfo *x = table->LookUpInAll($1->getName());
-		//printf("Function retrieved = %s\n", $1->getName().c_str());
-		//printf("type = %s,\n", x->getType().c_str());
-		// if (x->getFunctionInfo() == nullptr)
-		// {
-		// 	printf("not func pointer\n");
-		// }
+		
 		/* Check if the function name exists*/
 		if (x == nullptr) {
-			fprintf(errorFile, "Line no %d : Undeclared/undefined function name %s\n\n", lineCnt, $1->getName().c_str());
-			fprintf(logFile, "Error at line %d : Undeclared/undefined function name %s\n\n", lineCnt, $1->getName().c_str());
+			err_segm = "Undeclared/undefined function name " + $1->getName(); 
+			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
-			$$->setVarType("int");
+			$$->setVarType("int"); // default type int 
 		}
 		else if (x->getIdType() != "function" || x->getFunctionInfo() == nullptr)
 		{
-			fprintf(errorFile, "Line no %d : Type mismatch, %s not a function\n\n", lineCnt, x->getName().c_str());
-			fprintf(logFile, "Error at line %d : Type mismatch, %s not a function\n\n", lineCnt, x->getName().c_str());
+			err_segm = "Type mismatch, " + x->getName() + " not a function";
+			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
-			$$->setVarType("int");
+			$$->setVarType("int"); // default type int 
 		}
 		else 
 		{ 
-			/* match argument with param list */
-			if(x->getParamSize() == 0) // if function doesnt have any parameter
+			// match argument with param list 
+			
+			if (x->getParamSize() == 1 && arg_vect.size() == 0 && x->getParamAt(0)->param_type == "void")
 			{
-				 // needs to be implemented
+				// valid match
+				// def foo(void)
+				// call => foo();
+				$$->setVarType(x->getVarType());
 			}
 			else if (x->getParamSize() != arg_vect.size()) 
 			{
 				// parameter size does not match
-				fprintf(errorFile, "Line no %d : Parameter and argument size does not match for function %s\n\n", lineCnt, x->getName().c_str());
-				fprintf(logFile, "Error at line %d : Parameter and argument size does not match for function %s\n\n", lineCnt, x->getName().c_str());
+				err_segm = "Parameter and argument size does not match for function " + x->getName();
+				writeError(err_segm);
 				SMNTC_ERR_COUNT++;
 				$$->setVarType("int");
 			}
@@ -1363,144 +1241,165 @@ factor	: variable
 				{
 					if (x->getParamAt(i)->param_type != arg_vect[i]->getVarType())
 					{
-						fprintf(errorFile, "Line no %d : Type mismatch (between argument and parameter) for %s\n\n", lineCnt, x->getName().c_str());
-						fprintf(logFile, "Error at line %d : Type mismatch (between argument and parameter) for %s\n\n", lineCnt, x->getName().c_str());
+						err_segm = "Type mismatch (between argument and parameter) for " + x->getName();
+						writeError(err_segm);
 						SMNTC_ERR_COUNT++;
-						$$->setVarType("int");
+						//$$->setVarType("int");  // notice if error occurs!
 						break;
 					}
 				}
 				//printf("i val = %d\n", i);
 				$$->setVarType(x->getVarType());
-				// if (i!=arg_vect.size())
-				// {
-				// 	fprintf(errorFile, "Line no %d : Type mismatch (between argument and parameter) for %s\n\n", lineCnt, x->getName().c_str());
-				// 	fprintf(logFile, "Error at line %d : Type mismatch (between argument and parameter) for %s\n\n", lineCnt, x->getName().c_str());
-				// 	SMNTC_ERR_COUNT++;
-				// }
 			}
 			
 		}
-		arg_vect.clear();
+		arg_vect.clear(); // clearing current argument vector
+		writeToLog("factor : ID LPAREN argument_list RPAREN"); writeToLog(code_segm, false);
 	}
 	| LPAREN expression RPAREN
 	{
-		fprintf(logFile, "At line no: %d factor : LPAREN expression RPAREN\n\n", lineCnt);
-		fprintf(logFile, "(%s)\n\n", $2->getName().c_str());
-		symbolInfo *si = new symbolInfo("("+$2->getName()+")", "factor");
-		$$=si;
+		code_segm = "(" + $2->getName() + ")";
+		writeToLog("factor : LPAREN expression RPAREN"); writeToLog(code_segm, false);
+		$$ = new symbolInfo(code_segm, "factor");
 		$$->setVarType($2->getVarType());
 	}
 	| CONST_INT 
 	{
-		fprintf(logFile, "At line no: %d factor : CONST_INT\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		writeToLog("factor : CONST_INT"); writeToLog($1->getName(), false);
 		$$=$1;
 		$$->setVarType("int");
 	}
 	| CONST_FLOAT
 	{
-		fprintf(logFile, "At line no: %d factor : CONST_FLOAT\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		writeToLog("factor : CONST_FLOAT"); writeToLog($1->getName(), false);
+		std::string val = $1->getName();
+		int i;
+		for(int i = 0; i<val.size();i++)
+		{
+			if(val[i]=='.') break;
+		}
+		// converting float numbers into atleast 2 numbers after decimal point
+		if ((val.size()-1-i) == 1)val += "0";
 		$$=$1;
+		$$->setName(val);
 		$$->setVarType("float");
 	}
 	| variable INCOP 
 	{
-		fprintf(logFile, "At line no: %d factor : variable INCOP\n\n", lineCnt);
-		fprintf(logFile, "%s++\n\n", $1->getName().c_str());
-		$$ = new symbolInfo($1->getName()+"++", "factor");
+		code_segm = $1->getName() + "++";
+		writeToLog("factor : variable INCOP"); writeToLog(code_segm, false);
+		$$ = new symbolInfo(code_segm, "factor");
 		$$->setVarType($1->getVarType()); /* type setting */
 	}
 	| variable DECOP 
 	{
-		fprintf(logFile, "At line no: %d factor : variable DECOP\n\n", lineCnt);
-		fprintf(logFile, "%s--\n\n", $1->getName().c_str());
-		$$ = new symbolInfo($1->getName()+"--", "factor");
+		code_segm = $1->getName() + "--";
+		writeToLog("factor : variable DECOP"); writeToLog(code_segm, false);
+		$$ = new symbolInfo(code_segm, "factor");
 		$$->setVarType($1->getVarType()); /* type setting */
 	}
 	;
 	
 argument_list : arguments
 	{
-		fprintf(logFile, "At line no: %d argument_list : arguments\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		writeToLog("argument_list : arguments");
+		writeToLog($1->getName(), false);
 		$$=$1;
 		$$->setType("argument_list");
 	}
 	|
 	{
-		fprintf(logFile, "At line no: %d argument_list : <epsilon>\n\n", lineCnt);
-		fprintf(logFile, "\n\n");
-		symbolInfo *si = new symbolInfo("", "argument_list");
-		$$=si;
+		writeToLog("argument_list : <epsilon>");
+		writeToLog("", false);
+		$$ = new symbolInfo("", "argument_list");
 	}
 	;
 	
 arguments : arguments COMMA logic_expression
 	{
-		fprintf(logFile, "At line no: %d arguments : arguments COMMA logic_expression\n\n", lineCnt);
-		fprintf(logFile, "%s,%s\n\n", $1->getName().c_str(), $3->getName().c_str());
-		symbolInfo *si = new symbolInfo($1->getName()+","+$3->getName(), "arguments");
+		writeToLog("arguments : arguments COMMA logic_expression");
+		code_segm = $1->getName() + "," + $3->getName();
+		writeToLog(code_segm, false);
+		$$ = new symbolInfo(code_segm, "arguments");
 		if ($1->getVarType() == "void")
 		{
 			fprintf(errorFile, "Line no %d : Void function call within expression\n\n", lineCnt);
 			fprintf(logFile, "Error at line %d : Void function call within expression\n\n", lineCnt);
 			SMNTC_ERR_COUNT++;
-			$1->setVarType("int");
+			$1->setVarType("int");// default type is int
 		}
-		$$ = si;
-		arg_vect.push_back($3);
+		$$->setVarType($1->getVarType());
+		arg_vect.push_back($3); // arg_vect used to keep track of arguments
 	}
 	| logic_expression
 	{
-		fprintf(logFile, "At line no: %d arguments : logic_expression\n\n", lineCnt);
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
+		writeToLog("arguments : logic_expression");
+		writeToLog($1->getName(), false);
 		$$=new symbolInfo($1->getName(), "arguments");
 		if ($1->getVarType() == "void")
 		{
-			fprintf(errorFile, "Line no %d : Void function call within expression\n\n", lineCnt);
-			fprintf(logFile, "Error at line %d : Void function call within expression\n\n", lineCnt);
+			writeError("Void function call within expression");
 			SMNTC_ERR_COUNT++;
-			$1->setVarType("int");
+			$1->setVarType("int"); // default type is int
 		}
 		
-		$$->setType("arguments");
-		arg_vect.push_back($1);
+		$$->setVarType($1->getVarType());
+		arg_vect.push_back($1); // arg_vect used to keep track of arguments
 	}
 	;
 
 
 %%
+
 int main(int argc,char *argv[])
 {
 
+	if(argc<2)
+	{
+		printf("Input filenames not properly provided\n");
+		printf("Proper Format:\n[input_filename] [log_file _name] [erro_file_name]\n\n");
+		printf("Terminating program...\n");
+		return 0;
+	}
+
 	if((fp=fopen(argv[1],"r"))==NULL)
 	{
-		printf("Cannot Open Input File.\n");
+		printf("Cannot Open Input File.\nTerminating program...\n");
 		exit(1);
 	}
 
-	logFile= fopen(argv[2],"w");
-	//fclose(logFile);
-	errorFile= fopen(argv[3],"w");
-	//fclose(errorFile);
+	logFile = fopen(argv[2],"w");
+	errorFile = fopen(argv[3],"w");
+
+	// checking if logfile and error files are properly working
+	if (logFile == nullptr)
+	{
+		printf("Log File not properly opened\nTerminating program...\n");
+		fclose(logFile);
+		exit(1);
+	}
 	
-	//logFile= fopen(argv[2],"a");
-	//errorFile= fopen(argv[3],"a");
+	if (errorFile == nullptr)
+	{
+		printf("Error File not properly opened\nTerminating program...\n");
+		fclose(errorFile);
+		exit(1);
+	}
+
+	yyin=fp; // assigning input file pointer to yyin
+	table = new SymbolTable(6); // symbol table pointer assigned to table 
+	table->setFileWriter(logFile); 
 	
-	//printf("Parsing\n");
-	yyin=fp;
-	table = new SymbolTable(6);
-	table->setFileWriter(logFile);
+	// starting parsing
 	yyparse();
-	//printf("end Parsing\n");
-	
 
 	fprintf(logFile, "\t\t Symbol Table:\n\n");
 	table->printAllScopeTable();
-	fprintf(logFile, "Total Lines: %d\n\n", lineCnt-1); // lineCnt decreased to encounter false increment
+	fprintf(logFile, "Total Lines: %d\n\n", lineCnt-1); 
+				// lineCnt decreased to encounter false increment
 	fprintf(logFile, "Total Errors: %d\n\n", SMNTC_ERR_COUNT+ERR_COUNT);
+	
+	// closing input file, log file and error file
 	fclose(yyin);
 	fclose(logFile);
 	fclose(errorFile);

@@ -54,15 +54,12 @@ ELSE "else"
 FOR for 
 WHILE "while"
 DO "do"
-BREAK "break" 
 INT "int"
 CHAR "char"
 FLOAT "float"
 DOUBLE "double"
 VOID "void" 
 RETURN "return"
-SWITCH "switch"
-CASE "case"
 DEFAULT "default"
 CONTINUE "continue" 
 PRINTLN "println"
@@ -243,8 +240,6 @@ UNRECOGNIZED_CHAR_ERR .
 
 {DO} {return DO;}
 
-{BREAK} {return BREAK;}
-
 {INT} {return INT;}
 
 {CHAR} {return CHAR;}
@@ -256,10 +251,6 @@ UNRECOGNIZED_CHAR_ERR .
 {VOID} {return VOID;}
 
 {RETURN} {return RETURN;}
-
-{SWITCH} {return SWITCH;}
-
-{CASE} {return CASE;}
 
 {DEFAULT} {return DEFAULT;}
 
