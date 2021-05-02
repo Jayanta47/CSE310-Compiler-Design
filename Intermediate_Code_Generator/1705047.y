@@ -91,9 +91,15 @@ void insertVarIntoTable(std::string varType, variableInfo *vp)
 	else
 	{
 		si->setIdType("array");
-		//printf("declaring array for %s, size=%d, id = %s\n", si->getName().c_str(), si->getArrSize(), si->getIdType().c_str());
-
 	}
+	// code for setting up symbol
+	// need to assign a symbol for the variable
+	string tempVar = newTemp(vp->var_name);
+	initVarSet.insert(tempVar);
+
+	si->setSymbol(tempVar);
+	si->setCode("");
+
 	table->Insert(si);
 }
 
@@ -285,6 +291,7 @@ void yyerror(char *s)
 %token IF ELSE FOR WHILE INT FLOAT VOID RETURN
 %token ASSIGNOP LPAREN RPAREN LCURL RCURL DECOP PRINTF
 %token LTHIRD RTHIRD COMMA SEMICOLON NOT PRINTLN INCOP
+
 %token<symbol>CONST_INT
 %token<symbol>CONST_FLOAT
 %token<symbol>ID
@@ -569,7 +576,7 @@ interimScopeAct :
 var_declaration : type_specifier declaration_list SEMICOLON
 	{
 		code_segm = $1->getName()+" "+$2->getName()+";";
-		writeToLog("var_declaration : type_specifier declaration_list SEMICOLON");
+		//writeToLog("var_declaration : type_specifier declaration_list SEMICOLON");
 
 		$$ =  new symbolInfo(code_segm, "var_declaration");
 		std::string varType = $1->getName();
@@ -582,26 +589,31 @@ var_declaration : type_specifier declaration_list SEMICOLON
 		for ( int i=0; i<var_vect.size(); i++)
 		{
 			insertVarIntoTable(varType, var_vect[i]);
-			//printf("insert into table, %s\n", var_vect[i]->var_name.c_str());
 		}
 		var_vect.clear();
 		writeToLog(code_segm, false);
+
+		delete $1;
+		delete $2;
 	}
 	;
 
 type_specifier : INT
 	{
-		writeToLog("type_specifier : INT"); writeToLog("int", false);
+		// writeToLog("type_specifier : INT");
+		writeToLog("int", false);
 		$$ = new symbolInfo("int", "INT");
 	}
 	| FLOAT
 	{
-		writeToLog("type_specifier : FLOAT"); writeToLog("float", false);
+		// writeToLog("type_specifier : FLOAT");
+		writeToLog("float", false);
 		$$ = new symbolInfo("float", "FLOAT");
 	}
 	| VOID
 	{
-		writeToLog("type_specifier : VOID"); writeToLog("void", false);
+		// writeToLog("type_specifier : VOID");
+		writeToLog("void", false);
 		$$ = new symbolInfo("void", "VOID");
 	}
 	;
@@ -652,8 +664,7 @@ declaration_list : declaration_list COMMA ID
 	}
 	| ID
 	{
-		//printf("ID recog\n");
-		writeToLog("declaration_list : ID");
+		// writeToLog("declaration_list : ID");
 
 		$$=$1;
 		$$->setType("declaration_list");
@@ -670,7 +681,6 @@ declaration_list : declaration_list COMMA ID
 			SMNTC_ERR_COUNT++;
 		}
 		writeToLog($1->getName(), false);
-
 	}
 	| ID LTHIRD CONST_INT RTHIRD
 	{
@@ -700,8 +710,8 @@ declaration_list : declaration_list COMMA ID
 		si->setIdType("array");
 		$$=si;
 		writeToLog(code_segm, false);
-		//printf("in array declaration , size = %d\n", atoi(varPtr->var_size.c_str()));
-
+		delete $1;
+		delete $3;
 	}
 	| declaration_list error
 	{
