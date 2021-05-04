@@ -1,4 +1,4 @@
-%option noyywrap 
+%option noyywrap
 
 %x COMMENT
 %x SINGLECOMMENT
@@ -26,7 +26,6 @@ int lineCnt = 1;
 extern int ERR_COUNT;
 
 extern FILE *logFile;
-extern FILE *errorFile;
 
 
 
@@ -48,11 +47,11 @@ NEWLINE [\n]
 
 IF "if"
 ELSE "else"
-FOR for 
+FOR for
 WHILE "while"
 INT "int"
 FLOAT "float"
-VOID "void" 
+VOID "void"
 RETURN "return"
 PRINTLN "println"
 PRINTF "printf"
@@ -70,7 +69,7 @@ CONST_INT {DIGITS}
 /* Floating Point Literals */
 /* Possible variations: */
 /* Digit part - [digits.] , [.digits] , [digits.digits] */
-/* Exponential part - (optional) E[digits], E[+digits], E[-digits] */  
+/* Exponential part - (optional) E[digits], E[+digits], E[-digits] */
 EXPONENTIAL [Ee][-+]?([0-9])+
 
 CONST_FLOAT_VAR1 ([0-9]*\.[0-9]+|[0-9]+\.)({EXPONENTIAL})?
@@ -169,7 +168,7 @@ UNRECOGNIZED_CHAR_ERR .
 }
 
 <COMMENT>"*/" {
-    BEGIN(INITIAL); 
+    BEGIN(INITIAL);
 }
 
 <COMMENT>([^\*\n])* {
@@ -190,8 +189,8 @@ UNRECOGNIZED_CHAR_ERR .
 
 
 <COMMENT><<EOF>> {
-    fprintf(errorFile, "Error at line no %d: Unterminated Comment /*%s*/\n\n", 
-        tempCommentLineCnt, commentStr.c_str()); 
+    fprintf(logFile, "Error at line no %d: Unterminated Comment /*%s*/\n\n",
+        tempCommentLineCnt, commentStr.c_str());
     ERR_COUNT++;
     return 0;
 }
@@ -255,7 +254,7 @@ UNRECOGNIZED_CHAR_ERR .
 {ADDOP} {
     symbolInfo *si = new symbolInfo(yytext, "ADDOP");
     yylval.symbol = si;
-    return ADDOP;  
+    return ADDOP;
 }
 
 {MULOP} {
@@ -289,7 +288,7 @@ UNRECOGNIZED_CHAR_ERR .
 {CONST_FLOAT} {
     symbolInfo *si = new symbolInfo(yytext, "CONST_FLOAT");
     yylval.symbol = si;
-    return CONST_FLOAT;    
+    return CONST_FLOAT;
 }
 
 
@@ -301,32 +300,32 @@ UNRECOGNIZED_CHAR_ERR .
 
 {TOO_MANY_DECIMAL_POINT_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: Too many decimal points %s\n\n", lineCnt, yytext);
+    fprintf(logFile, "Error at line no %d: Too many decimal points %s\n\n", lineCnt, yytext);
 }
 
 {INVALID_PREF_SUF_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: Invalid prefix on ID or invalid suffix on Number %s\n\n", lineCnt, yytext);
+    fprintf(logFile, "Error at line no %d: Invalid prefix on ID or invalid suffix on Number %s\n\n", lineCnt, yytext);
 }
 
 {ILL_FORMED_NUM_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: Ill formed number %s\n\n", lineCnt, yytext);    
+    fprintf(logFile, "Error at line no %d: Ill formed number %s\n\n", lineCnt, yytext);
 }
 
 {UNFINISHER_CHAR_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: Unterminated character %s\n\n", lineCnt, yytext);
+    fprintf(logFile, "Error at line no %d: Unterminated character %s\n\n", lineCnt, yytext);
 }
 
 {MULTI_CHAR_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: Multi character constant error %s\n\n", lineCnt, yytext);
+    fprintf(logFile, "Error at line no %d: Multi character constant error %s\n\n", lineCnt, yytext);
 }
 
 {EMPTY_CHAR_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: Empty character constant error %s\n\n", lineCnt, yytext);
+    fprintf(logFile, "Error at line no %d: Empty character constant error %s\n\n", lineCnt, yytext);
 }
 
 
@@ -336,8 +335,8 @@ UNRECOGNIZED_CHAR_ERR .
 
 {UNRECOGNIZED_CHAR_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: Unrecognized character %s\n\n", lineCnt, yytext);   
-    fprintf(logFile, "Error at line %d: Unrecognized character %s\n\n", lineCnt, yytext);        
+    fprintf(logFile, "Error at line no %d: Unrecognized character %s\n\n", lineCnt, yytext);
+    fprintf(logFile, "Error at line %d: Unrecognized character %s\n\n", lineCnt, yytext);
 }
 
 

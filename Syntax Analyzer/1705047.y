@@ -329,6 +329,7 @@ program : program unit
 		writeToLog("program : unit");
 		writeToLog($1->getName(), false);
 		code_vect.push_back($1->getName());
+		// shouldnt there be print here also
 	}
 	;
 
@@ -1243,7 +1244,7 @@ unary_expression : ADDOP unary_expression
 		$$ = new symbolInfo(code_segm, "unary_expression");
 
 		/* void function cannot be called in expression */
-		voidFuncCall($2->getVarType())
+		voidFuncCall($2->getVarType());
 		$$->setVarType("int");
 		writeToLog(code_segm, false);
 	}

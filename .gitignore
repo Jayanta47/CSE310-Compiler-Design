@@ -26,5 +26,11 @@ Syntax Analyzer/*.yy.c
 Syntax Analyzer/*.tab.*
 Syntax Analyzer/[^//]*.txt
 Syntax Analyzer/*.tab.*
+Intermediate_Code_Generator/*.out*
+Intermediate_Code_Generator/*.o
+Intermediate_Code_Generator/*.yy.c
+Intermediate_Code_Generator/*.tab.*
+Intermediate_Code_Generator/[^//]*.txt
+Intermediate_Code_Generator/*.tab.*
 
 
