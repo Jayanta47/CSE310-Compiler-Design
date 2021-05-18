@@ -3,16 +3,16 @@
 .STACK 100H
 
 .DATA
-	address DW ?
 	tmpa1_1 DW ?
 	tmpb1_1 DW ?
+	tmpexpr1_1 DW ?
 	tmpfactor1_1 DW ?
 	tmplogic_expr1_1 DW ?
 	tmprel_expr1_1 DW ?
 	tmpsimple_expr1_1 DW ?
 	tmpterm1_1 DW ?
 	tmpc1_1 DW 3 DUP<?>
-	address DW 0
+	address DW ?
 	printData DW 0
 .CODE 
 MAIN PROC

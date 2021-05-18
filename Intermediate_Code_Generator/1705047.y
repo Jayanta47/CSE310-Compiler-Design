@@ -353,7 +353,7 @@ start : program
 			initArrSet.clear();
 			initVarSet.clear();
 
-			oss<<"\taddress DW 0"<<endl;
+			oss<<"\taddress DW ?"<<endl;
 			oss<<"\tprintData DW 0"<<endl;
 
 			// code segment
@@ -491,7 +491,7 @@ func_definition : func_definition_initP compound_statement
 		// if the procedure/function is main, main proc has to be declared
 		// and data segment initialization has to be performed
 		std::ostringstream oss;
-		initVarSet.insert("address");
+		// initVarSet.insert("address");
 		if (is_func_valid)
 		{
 			if (curr_func_name == "main")
@@ -538,7 +538,7 @@ func_definition : func_definition_initP compound_statement
 		// if the procedure/function is main, main proc has to be declared
 		// and data segment initialization has to be performed
 		std::ostringstream oss;
-		initVarSet.insert("address");
+		// initVarSet.insert("address");
 		if (is_func_valid)
 		{
 			if (curr_func_name == "main")
@@ -1382,6 +1382,7 @@ variable : ID
 		{
 			std::ostringstream oss;
 			string tempVar = newTemp("expr");
+			initVarSet.insert(tempVar);
 			oss<<$3->getCode()<<$1->getCode();
 			oss<<"\tMOV AX, "<<$3->getName()<<endl;
 			if ($1->getIdType() == "array"|| $1->getArrSize() >=0)

@@ -47,15 +47,17 @@ std::string current_return_type;
 
 // defined functions
 
-void writeToLog(std::string msg, bool lineSt = true)
+void writeToLog(std::string msg, bool lineSt = true, bool doubleGap=true)
 {
 	if (lineSt)
 	{
-		fprintf(logFile, "Line %d: %s\n\n", lineCnt, msg.c_str());
+		if (doubleGap)fprintf(logFile, "Line %d: %s\n\n", lineCnt, msg.c_str());
+		else fprintf(logFile, "Line %d: %s\n", lineCnt, msg.c_str());
 	}
 	else
 	{
-		fprintf(logFile, "%s\n\n", msg.c_str());
+		if (doubleGap)fprintf(logFile, "%s\n\n", msg.c_str());
+		else fprintf(logFile, "%s\n", msg.c_str());
 	}
 }
 
@@ -150,7 +152,7 @@ void checkFunctionDef(std::string funcName, std::string returnType)
 		//printf("checking return type for %s with return type = %s\n", x->getName().c_str(), x->getVarType().c_str());
 		if (returnType != x->getVarType())
 		{
-			writeError("Return type mismatch for function " + funcName);
+			writeError("Return type mismatch with function declaration in function " + funcName);
 			SMNTC_ERR_COUNT++;
 		}
 		else if (x->getParamSize() == 1 && temp_param_list.size()==0 && x->getParamAt(0)->param_type == "void")
@@ -256,7 +258,7 @@ bool voidFuncCall(std::string Type)
 	if (isVoid)
 	{
 		/* void function cannot be called in expression */
-		writeError("Void function call within expression");
+		writeError("Void function used in expression");
 		SMNTC_ERR_COUNT++;
 	}
 	return isVoid;
@@ -306,11 +308,11 @@ start : program
 	{
 		fprintf(logFile, "Line %d: start : program\n\n", lineCnt-1);// lineCnt is decreased by 1
 												//because it read the last newline of input file and falsely incremented line count
-		for (auto str : code_vect)
+		/* for (auto str : code_vect)
 		{
 			writeToLog(str, false);
 		}
-		writeToLog("\n", false);
+		writeToLog("\n", false); */
 	}
 	;
 
@@ -320,9 +322,9 @@ program : program unit
 		code_vect.push_back($2->getName());
 		for(int i = 0; i < code_vect.size(); i++)
 		{
-			writeToLog(code_vect[i], false);
+			writeToLog(code_vect[i], false, false);
 		}
-		writeToLog("\n", false);
+		writeToLog("", false, false);
 	}
 	| unit
 	{
@@ -412,9 +414,15 @@ func_definition_init : type_specifier ID LPAREN RPAREN
 parameter_list  : parameter_list COMMA type_specifier ID
 	{
 		code_segm = $1->getName() + "," + $3->getName() + " " + $4->getName();
-		writeToLog("parameter_list : parameter_list COMMA type_specifier ID");
+		
+		// if the current parameter is a duplicate, it will not be inserted 
+		// into parameter list 
 		bool duplicate = false;
-		bool voidType = false;
+
+		// if the typespecifier is void, subsequent errors will not be counted
+		// because the parameter list error would be unfairly penalized
+		// voidType variable is thus used to record
+		bool voidType = false; 
 		// checking if type specifier is void
 		if ($3->getName() == "void")
 		{
@@ -422,12 +430,16 @@ parameter_list  : parameter_list COMMA type_specifier ID
 			SMNTC_ERR_COUNT++;
 			voidType = true;
 		}
+
 		// There can be multiple declarations of a parameter inside param_list
 		// Multiple declarations of same param raises error
+
 		for (int i=0; i<temp_param_list.size(); i++)
 		{
+			// if ID name ($4) matches an already exisitng paramerter 
 			if (temp_param_list[i]->param_name == $4->getName())
 			{
+				// if the type is the same for both duplicates
 				if (temp_param_list[i]->param_type == $3->getName())
 				{
 					err_segm = "Multiple declaration of " + $4->getName() + " in parameter";
@@ -452,6 +464,7 @@ parameter_list  : parameter_list COMMA type_specifier ID
 			p->param_name = $4->getName();
 			temp_param_list.push_back(p);
 		}
+		writeToLog("parameter_list : parameter_list COMMA type_specifier ID");
 		writeToLog(code_segm, false);
 	}
 	| parameter_list COMMA type_specifier
@@ -576,10 +589,14 @@ var_declaration : type_specifier declaration_list SEMICOLON
 			SMNTC_ERR_COUNT++;
 			varType = "int"; // default var type int
 		}
-		for ( int i=0; i<var_vect.size(); i++)
+		else
 		{
-			insertVarIntoTable(varType, var_vect[i]);
-			//printf("insert into table, %s\n", var_vect[i]->var_name.c_str());
+			// NOTICE : (changed) void variables are not inserted into SymbolTable
+			for ( int i=0; i<var_vect.size(); i++)
+			{
+				insertVarIntoTable(varType, var_vect[i]);
+				//printf("insert into table, %s\n", var_vect[i]->var_name.c_str());
+			}
 		}
 		var_vect.clear();
 		writeToLog(code_segm, false);
@@ -887,11 +904,12 @@ expression_statement : SEMICOLON
 	{
 		code_segm = $1->getName() + ";";
 		writeToLog("expression_statement : expression SEMICOLON");
-		if (voidFuncCall($1->getVarType()))
-		{
-			/* void function cannot be called in expression */
-			$1->setVarType("int");
-		}
+		// commented out because of input4 mismatch 
+		// if (voidFuncCall($1->getVarType()))
+		// {
+		// 	/* void function cannot be called in expression */
+		// 	$1->setVarType("int");
+		// }
 		$$ = new symbolInfo(code_segm, "expression_statement");
 		$$->setVarType($1->getVarType());
 		writeToLog(code_segm, false);
@@ -1045,22 +1063,24 @@ variable : ID
 		$$ = new symbolInfo(code_segm, "expression");
 		$$->setVarType($1->getVarType());
 
-		// checking if the operands on both sides have same type
-		// or if left operand has higher precedence than operand on right
-		if ($1->getVarType() != $3->getVarType()) {
-			if (!($1->getVarType() == "float" && $3->getVarType() != "void"))
-			{
-				//printf("%s type=%s, %s type=%s\n",$1->getName().c_str(), $1->getVarType().c_str(), $3->getName().c_str(), $3->getVarType().c_str());
-				writeError("Type mismatch");
-				SMNTC_ERR_COUNT++;
-			}
-		}
-
+		
 		if (voidFuncCall($3->getVarType()))
 		{
 			/* void function cannot be called in expression */
 			$3->setVarType("int");
 		}
+		else if ($1->getVarType() != $3->getVarType()) {
+			// checking if the operands on both sides have same type
+			// or if left operand has higher precedence than operand on right
+			if (!($1->getVarType() == "float" && $3->getVarType() != "void"))
+			{
+				//printf("%s type=%s, %s type=%s\n",$1->getName().c_str(), $1->getVarType().c_str(), $3->getName().c_str(), $3->getVarType().c_str());
+				writeError("Type Mismatch");
+				SMNTC_ERR_COUNT++;
+			}
+		}
+
+		
 
 		// this part is abandoned because variable is already checked if
 		// array or variable while reducing into variable from ID/ID [expr]
@@ -1272,7 +1292,7 @@ factor	: variable
 
 		/* Check if the function name exists*/
 		if (x == nullptr) {
-			err_segm = "Undeclared/undefined function name " + $1->getName();
+			err_segm = "Undeclared function " + $1->getName();
 			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
 			$$->setVarType("int"); // default type int
@@ -1298,7 +1318,7 @@ factor	: variable
 			else if (x->getParamSize() != arg_vect.size())
 			{
 				// parameter size does not match
-				err_segm = "Parameter and argument size does not match for function " + x->getName();
+				err_segm = "Total number of arguments mismatch in function " + x->getName();
 				writeError(err_segm);
 				SMNTC_ERR_COUNT++;
 				$$->setVarType("int");
@@ -1311,11 +1331,22 @@ factor	: variable
 				{
 					if (x->getParamAt(i)->param_type != arg_vect[i]->getVarType())
 					{
-						err_segm = "Type mismatch (between argument and parameter) for " + x->getName();
+						err_segm = (i+'1');
+						if (i<=2)
+						{
+							if(i==0) err_segm+="st";
+							else if (i==1)err_segm+="nd";
+							else err_segm+="rd";
+						}
+						else err_segm+="th"; 
+						
+						err_segm += " argument mismatch in function " + x->getName();
+						err_segm += "\n(expected "+x->getParamAt(i)->param_type +", ";
+						err_segm += "found " + arg_vect[i]->getVarType() + ")";
 						writeError(err_segm);
 						SMNTC_ERR_COUNT++;
 						//$$->setVarType("int");  // notice if error occurs!
-						break;
+						break; // error is shown only for one parameter
 					}
 				}
 				//printf("i val = %d\n", i);
@@ -1455,7 +1486,7 @@ int main(int argc,char *argv[])
 	}
 
 	yyin=fp; // assigning input file pointer to yyin
-	table = new SymbolTable(6); // symbol table pointer assigned to table
+	table = new SymbolTable(30); // symbol table pointer assigned to table
 	table->setFileWriter(logFile);
 
 	// starting parsing

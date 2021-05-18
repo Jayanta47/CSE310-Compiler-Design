@@ -99,7 +99,7 @@ public:
     void setPrev(symbolInfo *newPrev) {this->prev = newPrev;}
     bool equalsName(std::string Name) {return this->Name == Name;}
     std::string _str() {
-        std::string thisSymbol = "< "+ this->Name + " : " + this->Type + "> ";
+        std::string thisSymbol = "< "+ this->Name + " , " + this->Type + "> ";
         return thisSymbol;
     }
 
