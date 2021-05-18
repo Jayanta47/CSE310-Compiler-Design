@@ -12,14 +12,12 @@
 #include<cstring>
 #include<cstdio>
 #include<cstdlib>
-#include "SymbolTable.h"
+#include "1705047_SymbolTable.h"
 #include "y.tab.h"
 
 using namespace std;
 
 
-//extern YYSTYPE yylval;
-//extern SymbolTable *table;
 void yyerror(char *);
 
 int lineCnt = 1;
@@ -39,9 +37,6 @@ std::string commentStr = "";
 
 DIGIT [0-9]
 DIGITS {DIGIT}+
-ZERO_OR_MORE_DIGITS {DIGIT}*
-LETTER [a-zA-Z]
-ALPHANUMERIC [{DIGIT}{LETTER}]
 WHITESPACE [ \t\f\r\v]+
 NEWLINE [\n]
 
@@ -72,10 +67,8 @@ CONST_INT {DIGITS}
 /* Floating Point Literals */
 /* Possible variations: */
 /* Digit part - [digits.] , [.digits] , [digits.digits] */
-/* Exponential part - (optional) E[digits], E[+digits], E[-digits] */  
+/* Exponential part - (optional) E[digits], E[+digits], E[-digits] */   
 EXPONENTIAL [Ee][-+]?([0-9])+
-/*CONST_FLOAT (({ZERO_OR_MORE_DIGITS}\.{DIGITS})|{DIGITS})({EXPONENTIAL})?*/
-/*([0-9]*\.[0-9]+|[0-9]+\.)([Ee][-+]?([0-9])+)?|[0-9]+([Ee][-+]?([0-9])+)*/
 CONST_FLOAT_VAR1 ([0-9]*\.[0-9]+|[0-9]+\.)({EXPONENTIAL})?
 CONST_FLOAT_VAR2 [0-9]+({EXPONENTIAL})
 CONST_FLOAT ({CONST_FLOAT_VAR1}|{CONST_FLOAT_VAR2})
@@ -126,24 +119,6 @@ IDENTIFIER [a-zA-Z_][a-zA-Z0-9_]*
 
 
 /* ----------------------------------------------------------------*/
-/* strings */
-/* ----------------------------------------------------------------*/
-CHARS_WITHOUT_Q_OR_SLASH_NL [^\"\\\n]
-STR_SPECIAL_CHARS \\['\"?\\abfnrtv] 
-SLASH_WITH_NRM_CHAR \\[A-Za-z]
-STR_BRK_LINE (\\\n|\\\r\n)
-STRING \"({CHARS_WITHOUT_Q_OR_SLASH_NL}|{STR_SPECIAL_CHARS}|{SLASH_WITH_NRM_CHAR}|{STR_BRK_LINE})*\"
-
-/* ----------------------------------------------------------------*/
-
-
-/* ----------------------------------------------------------------*/
-/* comments */
-/* ----------------------------------------------------------------*/
-/* done with state */
-
-
-/* ----------------------------------------------------------------*/
 /* errors */
 /* ----------------------------------------------------------------*/
 
@@ -166,9 +141,6 @@ EMPTY_CHAR_ERR '({WHITESPACE})*'
 RIGHT_APS_MISSING_IN_CHAR '({NORMAL_CHARACTERS}|(\\[nt\\afrbv0\"]))*
 SINGLE_FORWARD_SLASH_IN_CHAR '[\\]'
 UNFINISHER_CHAR_ERR ({RIGHT_APS_MISSING_IN_CHAR}|{SINGLE_FORWARD_SLASH_IN_CHAR}|("'\\"))
-
-
-UNFINISHED_STRING_ERR \"([^\"\\\n]|\\['\"?\\abfnrtv]|\\[A-Za-z]|\\\n|\\\r\n)*(\n|\r\n)
 
 /* UNRECOGNIZED CHARACTER ERROR */
 UNRECOGNIZED_CHAR_ERR .
@@ -206,7 +178,7 @@ UNRECOGNIZED_CHAR_ERR .
 
 
 <COMMENT><<EOF>> {
-    fprintf(errorFile, "Error at line no %d: Unterminated Comment /*%s*/\n\n", 
+    fprintf(errorFile, "Error at line %d: Unterminated Comment /*%s*/\n\n", 
         tempCommentLineCnt, commentStr.c_str()); 
     ERR_COUNT++;
     return 0;
@@ -232,23 +204,13 @@ UNRECOGNIZED_CHAR_ERR .
 
 {WHILE} {return WHILE;}
 
-{DO} {return DO;}
-
 {INT} {return INT;}
 
-{CHAR} {return CHAR;}
-
 {FLOAT} {return FLOAT;}
-
-{DOUBLE} {return DOUBLE;}
 
 {VOID} {return VOID;}
 
 {RETURN} {return RETURN;}
-
-{DEFAULT} {return DEFAULT;}
-
-{CONTINUE} {return CONTINUE;}
 
 {LPAREN} {return LPAREN;}
 
@@ -325,32 +287,32 @@ UNRECOGNIZED_CHAR_ERR .
 
 {TOO_MANY_DECIMAL_POINT_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: Too many decimal points %s\n\n", lineCnt, yytext);
+    fprintf(errorFile, "Error at line %d: Too many decimal points %s\n\n", lineCnt, yytext);
 }
 
 {INVALID_PREF_SUF_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: Invalid prefix on ID or invalid suffix on Number %s\n\n", lineCnt, yytext);
+    fprintf(errorFile, "Error at line %d: Invalid prefix on ID or invalid suffix on Number %s\n\n", lineCnt, yytext);
 }
 
 {ILL_FORMED_NUM_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: Ill formed number %s\n\n", lineCnt, yytext);    
+    fprintf(errorFile, "Error at line %d: Ill formed number %s\n\n", lineCnt, yytext);    
 }
 
 {UNFINISHER_CHAR_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: Unterminated character %s\n\n", lineCnt, yytext);
+    fprintf(errorFile, "Error at line %d: Unterminated character %s\n\n", lineCnt, yytext);
 }
 
 {MULTI_CHAR_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: Multi character constant error %s\n\n", lineCnt, yytext);
+    fprintf(errorFile, "Error at line %d: Multi character constant error %s\n\n", lineCnt, yytext);
 }
 
 {EMPTY_CHAR_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: Empty character constant error %s\n\n", lineCnt, yytext);
+    fprintf(errorFile, "Error at line %d: Empty character constant error %s\n\n", lineCnt, yytext);
 }
 
 
@@ -360,7 +322,7 @@ UNRECOGNIZED_CHAR_ERR .
 
 {UNRECOGNIZED_CHAR_ERR} {
     ERR_COUNT++;
-    fprintf(errorFile, "Error at line no %d: Unrecognized character %s\n\n", lineCnt, yytext);   
+    fprintf(errorFile, "Error at line %d: Unrecognized character %s\n\n", lineCnt, yytext);   
     fprintf(logFile, "Error at line %d: Unrecognized character %s\n\n", lineCnt, yytext);        
 }
 

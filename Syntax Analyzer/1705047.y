@@ -5,50 +5,83 @@
 #include<cmath>
 #include<vector>
 #include<regex>
-#include "SymbolTable.h"
+#include "1705047_SymbolTable.h"
 
 using namespace std;
 
 int yyparse(void);
 int yylex(void);
 
+// ------------------------------------------------------------
+// 	variables to count errors 
+// 	ERR_COUNT -> lexical errors
+// 	SMNTC_ERR_COUNT -> syntactical errors
+// ------------------------------------------------------------
+
 int ERR_COUNT=0;
 int SMNTC_ERR_COUNT = 0;
 extern int lineCnt;
 
+// ------------------------------------------------------------
+// 	File Pointers
+// ------------------------------------------------------------
+
 extern FILE *yyin;
-FILE *fp;
-FILE *logFile;
-FILE *errorFile;
+FILE *fp; // input file pointer
+FILE *logFile; // log file pointer: to write in log file
+FILE *errorFile; // error file pointer: to write in error files
 
+// ------------------------------------------------------------
+// 	containers and structures
+// ------------------------------------------------------------
 
-// containers and structures
-
+// to store the informations of a variable
 struct variableInfo {
 	std::string var_name;
 	std::string var_size;
 };
 
-std::string code_segm;
-std::string err_segm;
+std::string code_segm; // build to store code segments to be written in log files
+std::string err_segm; // build to store error segments to be written in error files
+
 vector<string> code_vect;
+
+// container to store the arguments passed into a function
+// arguments from argument_list are sequentially added into arg_vect
+// arguments later matched with parameters of a function
 vector<symbolInfo*> arg_vect;
+
+// container to store the variables in declaration list
+// variables that appear in reduction of declaration_list are
+// sequentially added in var_vect
+// variables are inserted into symbol table from var_vect
 vector<variableInfo*> var_vect;
+
+// container to hold parameters during declaration of function
+// parameters are sequentially added into temp_param_list
 vector<param*> temp_param_list;
+
+// pointer to symbol table
+// initiated in main function
 SymbolTable *table;
 
 // auxilliary variables
 variableInfo *varPtr;
 param *p;
-std::string type, final_type;
-std::string name, final_name;
-std::string return_type;
 std::string current_return_type;
 
-// defined functions
+/*
+------------------------------------------------------------
+	DEFINED FUNCTION
+------------------------------------------------------------
+*/
 
 void writeToLog(std::string msg, bool lineSt = true, bool doubleGap=true)
 {
+	// msg -> the statement to be written in log file
+	// lineSt -> prints a line with line number
+	// doubleGap -> if true gives two line gaps, otherwise a single gap
+
 	if (lineSt)
 	{
 		if (doubleGap)fprintf(logFile, "Line %d: %s\n\n", lineCnt, msg.c_str());
@@ -63,6 +96,9 @@ void writeToLog(std::string msg, bool lineSt = true, bool doubleGap=true)
 
 void writeError(std::string msg, bool writeOnAll = true)
 {
+	// msg -> the statement to be written in log file
+	// writeOnAll -> if true writes on both log and error files, otherwise writes only on error file
+
 	if(writeOnAll)
 	{
 		fprintf(errorFile, "Error at line %d: %s\n\n", lineCnt, msg.c_str());
@@ -79,15 +115,10 @@ void insertVarIntoTable(std::string varType, variableInfo *vp)
 	symbolInfo *si = new symbolInfo(vp->var_name, "ID");
 	si->setVarType(varType);
 	int varSize = atoi(vp->var_size.c_str());
-	//printf("Insertion func, array size = %d\n", varSize);
 	si->setArrSize(varSize);
 	if (varSize == -1) {si->setIdType("variable");}
-	else
-	{
-		si->setIdType("array");
-		//printf("declaring array for %s, size=%d, id = %s\n", si->getName().c_str(), si->getArrSize(), si->getIdType().c_str());
+	else si->setIdType("array");
 
-	}
 	table->Insert(si);
 }
 
@@ -97,12 +128,9 @@ void insertFuncIntoTable(std::string name, functionInfo* funcPtr)
 	si->setIdType("function");
 
 	si->setVarType(funcPtr->returnType);
-	//printf("insert func %s with var type %s\n",si->getName().c_str(), si->getVarType().c_str());
 	si->setFunctionInfo(funcPtr);
-	if(table->Insert(si))
-	{
-		//printf("insert func %s with var type %s\n",si->getName().c_str(), si->getVarType().c_str());
-	}
+	
+	table->Insert(si);
 }
 
 void checkFunctionDef(std::string funcName, std::string returnType)
@@ -220,11 +248,6 @@ void checkFunctionDec(std::string funcName, std::string returnType)
 	}
 }
 
-bool isNameOfArr(std::string Name)
-{
-	std::regex b("[a-zA-Z_][a-zA-Z0-9_]*\[[0-9]+\]");
-	return std::regex_match(Name, b);
-}
 
 std::string stripArr(std::string Name)
 {
@@ -268,7 +291,7 @@ void yyerror(char *s)
 {
 	ERR_COUNT++;
 	fprintf(logFile, "Error at Line %d: %s\n\n", lineCnt, s);
-	fprintf(errorFile, "Error at Line %d: %s\n\n", lineCnt, s);
+	fprintf(errorFile, "Error at line %d: %s\n\n", lineCnt, s);
 }
 
 
@@ -308,11 +331,6 @@ start : program
 	{
 		fprintf(logFile, "Line %d: start : program\n\n", lineCnt-1);// lineCnt is decreased by 1
 												//because it read the last newline of input file and falsely incremented line count
-		/* for (auto str : code_vect)
-		{
-			writeToLog(str, false);
-		}
-		writeToLog("\n", false); */
 	}
 	;
 
@@ -524,9 +542,17 @@ parameter_list  : parameter_list COMMA type_specifier ID
 	}
 	| type_specifier error
 	{
-		printf("error reporting\n");
+		// printf("error reporting\n");
+		writeError("1st parameter's name not given in function definition");
+		SMNTC_ERR_COUNT++;
 		yyclearin;
 		yyerrok;
+	}
+	| parameter_list COMMA type_specifier error
+	{
+		writeError(temp_param_list.size()+"th parameter's name not given in function definition");
+		SMNTC_ERR_COUNT++;
+		yyclearin; yyerrok;
 	}
 	;
 
@@ -541,7 +567,6 @@ compound_statement : LCURL interimScopeAct statements RCURL
 		table->printAllScopeTable();
 
 		table->ExitScope();
-		//current_return_type = "";
 	}
 	| LCURL interimScopeAct RCURL
 	{
@@ -551,7 +576,6 @@ compound_statement : LCURL interimScopeAct statements RCURL
 		$$ = new symbolInfo(code_segm, "compound_statement");
 		table->printAllScopeTable();
 		table->ExitScope();
-		//current_return_type = "";
 
 	}
 	;
@@ -716,16 +740,14 @@ declaration_list : declaration_list COMMA ID
 
 		writeToLog("declaration_list : ID LTHIRD CONST_INT RTHIRD");
 		writeToLog(code_segm, false);
-		//printf("in array declaration , size = %d\n", atoi(varPtr->var_size.c_str()));
 
 	}
 	| declaration_list error
 	{
-		printf("printing declaration error\n");
-		printf("error-> %s\n", $1->getName().c_str());
+		// printf("printing declaration error\n");
+		// printf("error-> %s\n", $1->getName().c_str());
 		yyclearin; //yyerrok;
 		$$ = $1;
-		//table->printAllScopeTable();
 	}
 	;
 
@@ -746,7 +768,10 @@ statements : statement
 	{
 		//fprintf(logFile, "At line no: %d statements : statements statement\n\n", lineCnt);
 		fprintf(logFile, "%s\n\n", $1->getName().c_str());
-		printf("Converging into statements\n");
+	}
+	| error_statement
+	{
+		// do nothing
 	}
 	;
 
@@ -845,29 +870,6 @@ statement : var_declaration
 		$$->setType("statement");
 		writeToLog(code_segm, false);
 	}
-	// | PRINTF LPAREN ID RPAREN SEMICOLON
-	// {
-	// 	code_segm = "printf("+$3->getName()+")"+";";
-	// 	writeToLog("statement : PRINTF LPAREN ID RPAREN SEMICOLON");
-
-	// 	// check if the declared ID is declared or not
-	// 	symbolInfo *x = table->LookUpInAll($3->getName());
-	// 	if (x == nullptr)
-	// 	{
-	// 		err_segm = "Undeclared variable " + $3->getName();
-	// 		writeError(err_segm);
-	// 		SMNTC_ERR_COUNT++;
-	// 	}
-	// 	else if (x->getIdType() != "variable")
-	// 	{
-	// 		err_segm = $3->getName() + " not a variable";
-	// 		writeError(err_segm);
-	// 		SMNTC_ERR_COUNT++;
-	// 	} 
-	// 	$$ = new symbolInfo(code_segm, "statement");
-	// 	$$->setType("statement");
-	// 	writeToLog(code_segm, false);
-	// }
 	| RETURN expression SEMICOLON
 	{
 		code_segm = "return "+$2->getName()+";";
@@ -882,7 +884,6 @@ statement : var_declaration
 			$2->setVarType("int"); // default type is int
 		}
 
-		return_type = $2->getVarType();
 		if ($2->getVarType() != current_return_type)
 		{
 			SMNTC_ERR_COUNT++;
@@ -896,7 +897,7 @@ statement : var_declaration
 
 error_statement : error_expression
 	{
-		printf("error_statement : error_expression\n");
+		// printf("error_statement : error_expression\n");
 		$$ = $1;
 	};
 
@@ -924,7 +925,7 @@ expression_statement : SEMICOLON
 
 error_expression : rel_expression error
 	{
-		printf("rel_expression_error : rel_expression error => %s error\n", $1->getName().c_str());
+		// printf("rel_expression_error : rel_expression error => %s error\n", $1->getName().c_str());
 		//yyclearin; // clears the stack pointer
 		yyerrok; // permission to call error
 		symbolInfo *si = new symbolInfo(
@@ -935,16 +936,16 @@ error_expression : rel_expression error
 	}
 	| variable ASSIGNOP logic_expression error
 	{
-		printf("variable ASSIGNOP logic_expression_error\n");
-		printf("%s = %s\n", $1->getName().c_str(), $3->getName().c_str());
+		// printf("variable ASSIGNOP logic_expression_error\n");
+		// printf("%s = %s\n", $1->getName().c_str(), $3->getName().c_str());
 		$$ = new symbolInfo("" , "expression");
 		//yyclearin;
 		yyerrok;
 	}
 	| simple_expression ADDOP error
 	{
-		printf("error_expression : simple_expression ADDOP error\n");
-		yyclearin; // clears the stack pointer
+		// printf("error_expression : simple_expression ADDOP error\n");
+		// yyclearin; // clears the stack pointer
 		yyerrok; // permission to call error
 		symbolInfo *si = new symbolInfo(
 			$1->getName(),
@@ -954,7 +955,7 @@ error_expression : rel_expression error
 	}
 	| simple_expression RELOP error
 	{
-		printf("error_expression : simple_expression RELOP error\n");
+		// printf("error_expression : simple_expression RELOP error\n");
 		//yyclearin; // clears the stack pointer
 		yyerrok; // permission to call error
 		symbolInfo *si = new symbolInfo(
@@ -965,7 +966,7 @@ error_expression : rel_expression error
 	}
 	| error
 	{
-		printf("single error detected");
+		//printf("single error detected");
 		$$ = new symbolInfo("", "error");
 	}
 	;
@@ -1087,29 +1088,6 @@ variable : ID
 
 		
 
-		// this part is abandoned because variable is already checked if
-		// array or variable while reducing into variable from ID/ID [expr]
-
-		// needs checking
-		// std::string searchName;
-
-		// if (isNameOfArr($1->getName()))
-		// {
-		// 	searchName = stripArr($1->getName());
-		// }
-		// else
-		// {
-		// 	searchName = $1->getName();
-		// }
-		// //printf("%s\n", searchName.c_str());
-		// symbolInfo *x = table->LookUpInAll(searchName);
-		// if (x==nullptr) {
-		// 	//fprintf(errorFile, "Line no %d : Variable not declared in this scope\n\n", lineCnt);
-		// 	//SMNTC_ERR_COUNT++;
-		// 	$$->setVarType("int");
-		// }
-
-		type = $1->getVarType();
 		writeToLog(code_segm, false);
 	}
 	;
