@@ -53,17 +53,11 @@ IF "if"
 ELSE "else"
 FOR for 
 WHILE "while"
-DO "do"
 INT "int"
-CHAR "char"
 FLOAT "float"
-DOUBLE "double"
 VOID "void" 
 RETURN "return"
-DEFAULT "default"
-CONTINUE "continue" 
-PRINTLN "println"
-PRINTF "printf"
+PRINTLN "printf"
 
 /* ----------------------------------------------------------------*/
 
@@ -273,8 +267,6 @@ UNRECOGNIZED_CHAR_ERR .
 {SEMICOLON} {return SEMICOLON;}
 
 {PRINTLN} {return PRINTLN;}
-
-{PRINTF} {return PRINTF;}
 
 {INCOP} {
     return INCOP;

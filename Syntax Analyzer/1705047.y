@@ -278,9 +278,9 @@ void yyerror(char *s)
 	symbolInfo *symbol;
 }
 
-%token IF ELSE FOR WHILE DO INT CHAR FLOAT DOUBLE VOID RETURN
-%token DEFAULT CONTINUE ASSIGNOP LPAREN RPAREN LCURL RCURL
-%token LTHIRD RTHIRD COMMA SEMICOLON NOT PRINTLN INCOP DECOP PRINTF
+%token IF ELSE FOR WHILE INT FLOAT VOID RETURN
+%token ASSIGNOP LPAREN RPAREN LCURL RCURL
+%token LTHIRD RTHIRD COMMA SEMICOLON NOT PRINTLN INCOP DECOP 
 %token<symbol>CONST_INT
 %token<symbol>CONST_FLOAT
 %token<symbol>ID
@@ -622,9 +622,8 @@ type_specifier : INT
 
 declaration_list : declaration_list COMMA ID
 	{
-		code_segm = $1->getName()+", "+$3->getName();
-		writeToLog("declaration_list : declaration_list COMMA ID");
-		writeToLog(code_segm, false);
+		code_segm = $1->getName()+","+$3->getName();
+		
 		if (table->LookUpInCurrent($3->getName()) != nullptr)
 		{
 			err_segm = "Multiple declaration of " + $3->getName();
@@ -639,11 +638,14 @@ declaration_list : declaration_list COMMA ID
 
 		var_vect.push_back(varPtr);
 
+		writeToLog("declaration_list : declaration_list COMMA ID");
+		writeToLog(code_segm, false);
+
 	}
 	| declaration_list COMMA ID LTHIRD CONST_INT RTHIRD
 	{
-		code_segm = $1->getName()+", "+$3->getName()+"["+$5->getName()+"]";
-		writeToLog("declaration_list : declaration_list COMMA ID LTHIRD CONST_INT RTHIRD");
+		code_segm = $1->getName()+","+$3->getName()+"["+$5->getName()+"]";
+		
 
 		if (table->LookUpInCurrent($3->getName()) != nullptr)
 		{
@@ -659,12 +661,12 @@ declaration_list : declaration_list COMMA ID
 		varPtr->var_name = $3->getName();
 		varPtr->var_size = $5->getName(); // size for array variable
 		var_vect.push_back(varPtr);
+
+		writeToLog("declaration_list : declaration_list COMMA ID LTHIRD CONST_INT RTHIRD");
 		writeToLog(code_segm, false);
 	}
 	| ID
 	{
-		//printf("ID recog\n");
-		writeToLog("declaration_list : ID");
 
 		$$=$1;
 		$$->setType("declaration_list");
@@ -680,6 +682,8 @@ declaration_list : declaration_list COMMA ID
 			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
 		}
+
+		writeToLog("declaration_list : ID");
 		writeToLog($1->getName(), false);
 
 	}
@@ -687,8 +691,7 @@ declaration_list : declaration_list COMMA ID
 	{
 		/* declaration of array */
 		code_segm = $1->getName()+"["+$3->getName()+"]";
-		writeToLog("declaration_list : ID LTHIRD CONST_INT RTHIRD");
-
+		
 		if (table->LookUpInCurrent($1->getName()) != nullptr)
 		{
 			//char st[10];
@@ -710,6 +713,8 @@ declaration_list : declaration_list COMMA ID
 		si->setArrSize(atoi($3->getName().c_str()));
 		si->setIdType("array");
 		$$=si;
+
+		writeToLog("declaration_list : ID LTHIRD CONST_INT RTHIRD");
 		writeToLog(code_segm, false);
 		//printf("in array declaration , size = %d\n", atoi(varPtr->var_size.c_str()));
 
@@ -776,7 +781,7 @@ statement : var_declaration
 	}
 	| IF LPAREN expression RPAREN statement %prec LOWER_THAN_ELSE
 	{
-		code_segm = "if("+$3->getName()+")"+$5->getName();
+		code_segm = "if ("+$3->getName()+")"+$5->getName();
 		writeToLog("statement : IF LPAREN expression RPAREN statement");
 
 		if (voidFuncCall($3->getVarType()))
@@ -790,7 +795,7 @@ statement : var_declaration
 	}
 	| IF LPAREN expression RPAREN statement ELSE statement
 	{
-		code_segm = "if("+$3->getName()+")"+$5->getName()+"\nelse \n"+$7->getName();
+		code_segm = "if ("+$3->getName()+")"+$5->getName()+"\nelse \n"+$7->getName();
 		writeToLog("statement : IF LPAREN expression RPAREN statement ELSE statement");
 
 		if (voidFuncCall($3->getVarType()))
@@ -819,7 +824,7 @@ statement : var_declaration
 	}
 	| PRINTLN LPAREN ID RPAREN SEMICOLON
 	{
-		code_segm = "println("+$3->getName()+")"+";";
+		code_segm = "printf("+$3->getName()+")"+";";
 		writeToLog("statement : PRINTLN LPAREN ID RPAREN SEMICOLON");
 
 		// check if the declared ID is declared or not
@@ -840,29 +845,29 @@ statement : var_declaration
 		$$->setType("statement");
 		writeToLog(code_segm, false);
 	}
-	| PRINTF LPAREN ID RPAREN SEMICOLON
-	{
-		code_segm = "printf("+$3->getName()+")"+";";
-		writeToLog("statement : PRINTF LPAREN ID RPAREN SEMICOLON");
+	// | PRINTF LPAREN ID RPAREN SEMICOLON
+	// {
+	// 	code_segm = "printf("+$3->getName()+")"+";";
+	// 	writeToLog("statement : PRINTF LPAREN ID RPAREN SEMICOLON");
 
-		// check if the declared ID is declared or not
-		symbolInfo *x = table->LookUpInAll($3->getName());
-		if (x == nullptr)
-		{
-			err_segm = "Undeclared variable " + $3->getName();
-			writeError(err_segm);
-			SMNTC_ERR_COUNT++;
-		}
-		else if (x->getIdType() != "variable")
-		{
-			err_segm = $3->getName() + " not a variable";
-			writeError(err_segm);
-			SMNTC_ERR_COUNT++;
-		} 
-		$$ = new symbolInfo(code_segm, "statement");
-		$$->setType("statement");
-		writeToLog(code_segm, false);
-	}
+	// 	// check if the declared ID is declared or not
+	// 	symbolInfo *x = table->LookUpInAll($3->getName());
+	// 	if (x == nullptr)
+	// 	{
+	// 		err_segm = "Undeclared variable " + $3->getName();
+	// 		writeError(err_segm);
+	// 		SMNTC_ERR_COUNT++;
+	// 	}
+	// 	else if (x->getIdType() != "variable")
+	// 	{
+	// 		err_segm = $3->getName() + " not a variable";
+	// 		writeError(err_segm);
+	// 		SMNTC_ERR_COUNT++;
+	// 	} 
+	// 	$$ = new symbolInfo(code_segm, "statement");
+	// 	$$->setType("statement");
+	// 	writeToLog(code_segm, false);
+	// }
 	| RETURN expression SEMICOLON
 	{
 		code_segm = "return "+$2->getName()+";";
@@ -881,8 +886,8 @@ statement : var_declaration
 		if ($2->getVarType() != current_return_type)
 		{
 			SMNTC_ERR_COUNT++;
-			err_segm = "Type mismatch, return type expected: " + current_return_type
-						+ " found: " + $2->getVarType();
+			err_segm = "Type mismatch\n([return type] expected: " + current_return_type
+						+ " found: " + $2->getVarType() +")";
 			writeError(err_segm);
 		}
 		writeToLog(code_segm, false);
@@ -1494,7 +1499,7 @@ int main(int argc,char *argv[])
 
 	fprintf(logFile, "\t\t Symbol Table:\n\n");
 	table->printAllScopeTable();
-	fprintf(logFile, "Total Lines: %d\n\n", lineCnt-1);
+	fprintf(logFile, "Total Lines: %d\n", lineCnt-1);
 				// lineCnt decreased to encounter false increment
 	fprintf(logFile, "Total Errors: %d\n\n", SMNTC_ERR_COUNT+ERR_COUNT);
 
