@@ -790,6 +790,16 @@ statement : var_declaration
 		writeToLog("statement : compound_statement"); writeToLog($1->getName(), false);
 		$$=$1; $$->setType("statement");
 	}
+	| func_definition
+	{
+		writeError("Invalid Scope Error");
+		$$=$1; $$->setName("");
+	}
+	| func_declaration
+	{
+		writeError("Invalid Scope Error");
+		$$=$1; $$->setName("");
+	}
 	| FOR LPAREN expression_statement expression_statement expression RPAREN statement
 	{
 		code_segm = "for("+$3->getName()+$4->getName()+$5->getName()+")"+$7->getName();
@@ -897,7 +907,7 @@ statement : var_declaration
 
 error_statement : error_expression
 	{
-		// printf("error_statement : error_expression\n");
+		//printf("error_statement : error_expression\n");
 		$$ = $1;
 	};
 
@@ -966,7 +976,7 @@ error_expression : rel_expression error
 	}
 	| error
 	{
-		//printf("single error detected");
+		printf("single error detected\n");
 		$$ = new symbolInfo("", "error");
 	}
 	;
@@ -1300,6 +1310,11 @@ factor	: variable
 			}
 			else if (x->getParamSize() != arg_vect.size())
 			{
+				for(int i=0;i<arg_vect.size();i++)
+				{
+					printf("%s\n", arg_vect[i]->getName().c_str());
+				}
+				cout<<endl;
 				// parameter size does not match
 				err_segm = "Total number of arguments mismatch in function " + x->getName();
 				writeError(err_segm);
