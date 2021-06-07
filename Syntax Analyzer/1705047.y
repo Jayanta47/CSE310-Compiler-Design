@@ -13,7 +13,7 @@ int yyparse(void);
 int yylex(void);
 
 // ------------------------------------------------------------
-// 	variables to count errors 
+// 	variables to count errors
 // 	ERR_COUNT -> lexical errors
 // 	SMNTC_ERR_COUNT -> syntactical errors
 // ------------------------------------------------------------
@@ -69,6 +69,7 @@ SymbolTable *table;
 variableInfo *varPtr;
 param *p;
 std::string current_return_type;
+bool insideMain = false; // true if inside main function
 
 /*
 ------------------------------------------------------------
@@ -76,13 +77,13 @@ std::string current_return_type;
 ------------------------------------------------------------
 */
 
-void writeToLog(std::string msg, bool lineSt = true, bool doubleGap=true)
+void writeToLog(std::string msg, bool lineNum = true, bool doubleGap=true)
 {
 	// msg -> the statement to be written in log file
-	// lineSt -> prints a line with line number
+	// lineNum -> prints a line with line number
 	// doubleGap -> if true gives two line gaps, otherwise a single gap
 
-	if (lineSt)
+	if (lineNum)
 	{
 		if (doubleGap)fprintf(logFile, "Line %d: %s\n\n", lineCnt, msg.c_str());
 		else fprintf(logFile, "Line %d: %s\n", lineCnt, msg.c_str());
@@ -129,13 +130,14 @@ void insertFuncIntoTable(std::string name, functionInfo* funcPtr)
 
 	si->setVarType(funcPtr->returnType);
 	si->setFunctionInfo(funcPtr);
-	
+
 	table->Insert(si);
 }
 
 void checkFunctionDef(std::string funcName, std::string returnType)
 {
 	symbolInfo *x = table->LookUpInAll(funcName);
+	if (funcName == "main") insideMain = true;
 	if (x == nullptr)
 	{
 		functionInfo *f = new functionInfo;
@@ -243,7 +245,7 @@ void checkFunctionDec(std::string funcName, std::string returnType)
 	}
 	else
 	{
-		writeError("Multiple definitions for function " + funcName);
+		writeError("Multiple declarations for function " + funcName);
 		SMNTC_ERR_COUNT++;
 	}
 }
@@ -281,7 +283,7 @@ bool voidFuncCall(std::string Type)
 	if (isVoid)
 	{
 		/* void function cannot be called in expression */
-		writeError("Void function used in expression");
+		writeError("Void function/variable used in expression");
 		SMNTC_ERR_COUNT++;
 	}
 	return isVoid;
@@ -303,7 +305,7 @@ void yyerror(char *s)
 
 %token IF ELSE FOR WHILE INT FLOAT VOID RETURN
 %token ASSIGNOP LPAREN RPAREN LCURL RCURL
-%token LTHIRD RTHIRD COMMA SEMICOLON NOT PRINTLN INCOP DECOP 
+%token LTHIRD RTHIRD COMMA SEMICOLON NOT PRINTLN INCOP DECOP
 %token<symbol>CONST_INT
 %token<symbol>CONST_FLOAT
 %token<symbol>ID
@@ -331,6 +333,7 @@ start : program
 	{
 		fprintf(logFile, "Line %d: start : program\n\n", lineCnt-1);// lineCnt is decreased by 1
 												//because it read the last newline of input file and falsely incremented line count
+		code_vect.clear();
 	}
 	;
 
@@ -349,7 +352,6 @@ program : program unit
 		writeToLog("program : unit");
 		writeToLog($1->getName(), false);
 		code_vect.push_back($1->getName());
-		// shouldnt there be print here also
 	}
 	;
 
@@ -358,18 +360,21 @@ unit : var_declaration
 		writeToLog("unit : var_declaration");
 		writeToLog($1->getName(), false);
 		$$ = new symbolInfo($1->getName(), "unit");
+		delete $1;
 	}
 	| func_declaration
 	{
 		writeToLog("unit : func_declaration");
 		writeToLog($1->getName(), false);
 		$$ = new symbolInfo($1->getName(), "unit");
+		delete $1;
 	}
 	| func_definition
 	{
 		writeToLog("unit : func_definition");
 		writeToLog($1->getName(), false);
 		$$ = new symbolInfo($1->getName(), "unit");
+		delete $1;
 	}
 	;
 
@@ -381,6 +386,9 @@ func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON
 		$$ = new symbolInfo(code_segm, "func_declaration");
 		checkFunctionDec($2->getName(), $1->getName());
 		temp_param_list.clear();
+		delete $1;
+		delete $2;
+		delete $4;
 	}
 	| type_specifier ID LPAREN RPAREN SEMICOLON
 	{
@@ -390,6 +398,8 @@ func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON
 		$$ = new symbolInfo(code_segm, "func_declaration");
 		checkFunctionDec($2->getName(), $1->getName());
 		temp_param_list.clear();
+		delete $1;
+		delete $2;
 	}
 	;
 
@@ -400,6 +410,9 @@ func_definition : func_definition_initP compound_statement
 		writeToLog(code_segm, false);
 		$$ = new symbolInfo(code_segm, "func_definition");
 		$$->setVarType($1->getVarType());
+
+		delete $1;
+		delete $2;
 	}
 	| func_definition_init compound_statement
 	{
@@ -408,6 +421,9 @@ func_definition : func_definition_initP compound_statement
 		writeToLog(code_segm, false);
 		$$ = new symbolInfo(code_segm, "func_definition");
 		$$->setVarType($1->getVarType());
+
+		delete $1;
+		delete $2;
 	}
 	;
 
@@ -418,6 +434,9 @@ func_definition_initP : type_specifier ID LPAREN parameter_list RPAREN
 		$$ = new symbolInfo(code_segm, "func_definition_initP");
 		$$->setVarType($1->getName());
 		current_return_type = $1->getName();
+		delete $1;
+		delete $2;
+		delete $4;
 	};
 
 func_definition_init : type_specifier ID LPAREN RPAREN
@@ -427,20 +446,22 @@ func_definition_init : type_specifier ID LPAREN RPAREN
 		$$ = new symbolInfo(code_segm, "func_definition_init");
 		$$->setVarType($1->getName());
 		current_return_type = $1->getName();
+		delete $1;
+		delete $2;
 	};
 
 parameter_list  : parameter_list COMMA type_specifier ID
 	{
 		code_segm = $1->getName() + "," + $3->getName() + " " + $4->getName();
-		
-		// if the current parameter is a duplicate, it will not be inserted 
-		// into parameter list 
+
+		// if the current parameter is a duplicate, it will not be inserted
+		// into parameter list
 		bool duplicate = false;
 
 		// if the typespecifier is void, subsequent errors will not be counted
 		// because the parameter list error would be unfairly penalized
 		// voidType variable is thus used to record
-		bool voidType = false; 
+		bool voidType = false;
 		// checking if type specifier is void
 		if ($3->getName() == "void")
 		{
@@ -454,7 +475,7 @@ parameter_list  : parameter_list COMMA type_specifier ID
 
 		for (int i=0; i<temp_param_list.size(); i++)
 		{
-			// if ID name ($4) matches an already exisitng paramerter 
+			// if ID name ($4) matches an already exisitng paramerter
 			if (temp_param_list[i]->param_name == $4->getName())
 			{
 				// if the type is the same for both duplicates
@@ -484,6 +505,10 @@ parameter_list  : parameter_list COMMA type_specifier ID
 		}
 		writeToLog("parameter_list : parameter_list COMMA type_specifier ID");
 		writeToLog(code_segm, false);
+
+		delete $1;
+		delete $3;
+		delete $4;
 	}
 	| parameter_list COMMA type_specifier
 	{
@@ -501,6 +526,9 @@ parameter_list  : parameter_list COMMA type_specifier ID
 		}
 		else temp_param_list.push_back(p);
 		writeToLog(code_segm, false);
+
+		delete $1;
+		delete $3;
 	}
 	| type_specifier ID
 	{
@@ -525,6 +553,8 @@ parameter_list  : parameter_list COMMA type_specifier ID
 			temp_param_list.push_back(p);
 		}
 		writeToLog(code_segm, false);
+		delete $1;
+		delete $2;
 	}
 	| type_specifier
 	{
@@ -567,6 +597,7 @@ compound_statement : LCURL interimScopeAct statements RCURL
 		table->printAllScopeTable();
 
 		table->ExitScope();
+		delete $3;
 	}
 	| LCURL interimScopeAct RCURL
 	{
@@ -624,6 +655,8 @@ var_declaration : type_specifier declaration_list SEMICOLON
 		}
 		var_vect.clear();
 		writeToLog(code_segm, false);
+		delete $1;
+		delete $2;
 	}
 	;
 
@@ -647,7 +680,7 @@ type_specifier : INT
 declaration_list : declaration_list COMMA ID
 	{
 		code_segm = $1->getName()+","+$3->getName();
-		
+
 		if (table->LookUpInCurrent($3->getName()) != nullptr)
 		{
 			err_segm = "Multiple declaration of " + $3->getName();
@@ -665,11 +698,14 @@ declaration_list : declaration_list COMMA ID
 		writeToLog("declaration_list : declaration_list COMMA ID");
 		writeToLog(code_segm, false);
 
+		delete $1;
+		delete $3;
+
 	}
 	| declaration_list COMMA ID LTHIRD CONST_INT RTHIRD
 	{
 		code_segm = $1->getName()+","+$3->getName()+"["+$5->getName()+"]";
-		
+
 
 		if (table->LookUpInCurrent($3->getName()) != nullptr)
 		{
@@ -688,6 +724,10 @@ declaration_list : declaration_list COMMA ID
 
 		writeToLog("declaration_list : declaration_list COMMA ID LTHIRD CONST_INT RTHIRD");
 		writeToLog(code_segm, false);
+
+		delete $1;
+		delete $3;
+		delete $5;
 	}
 	| ID
 	{
@@ -715,7 +755,7 @@ declaration_list : declaration_list COMMA ID
 	{
 		/* declaration of array */
 		code_segm = $1->getName()+"["+$3->getName()+"]";
-		
+
 		if (table->LookUpInCurrent($1->getName()) != nullptr)
 		{
 			//char st[10];
@@ -723,7 +763,7 @@ declaration_list : declaration_list COMMA ID
 			//printf("%s=%s\n", $1->getName().c_str(), st);
 			//printf("array %s = %s\n", $1->getName().c_str(), $1->getIdType().c_str());
 			err_segm = "Multiple declaration of " + $1->getName();
-			writeError(code_segm);
+			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
 		}
 
@@ -740,6 +780,9 @@ declaration_list : declaration_list COMMA ID
 
 		writeToLog("declaration_list : ID LTHIRD CONST_INT RTHIRD");
 		writeToLog(code_segm, false);
+
+		delete $1;
+		delete $3;
 
 	}
 	| declaration_list error
@@ -763,6 +806,9 @@ statements : statement
 		code_segm = $1->getName() + $2->getName();
 		writeToLog("statements : statements statement"); writeToLog(code_segm, false);
 		$$=new symbolInfo(code_segm+"\n", "statements");
+
+		delete $1;
+		delete $2;
 	}
 	| statements error_statement
 	{
@@ -793,12 +839,16 @@ statement : var_declaration
 	| func_definition
 	{
 		writeError("Invalid Scope Error");
-		$$=$1; $$->setName("");
+		SMNTC_ERR_COUNT++;
+		writeToLog("statement : func_definition"); writeToLog($1->getName(), false);
+		$$=$1; //$$->setName("");
 	}
 	| func_declaration
 	{
 		writeError("Invalid Scope Error");
-		$$=$1; $$->setName("");
+		SMNTC_ERR_COUNT++;
+		writeToLog("statement : func_declaration"); writeToLog($1->getName(), false);
+		$$=$1; //$$->setName("");
 	}
 	| FOR LPAREN expression_statement expression_statement expression RPAREN statement
 	{
@@ -813,6 +863,11 @@ statement : var_declaration
 		$$ = new symbolInfo(code_segm, "statement");
 		$$->setType("statement");
 		writeToLog(code_segm, false);
+
+		delete $3;
+		delete $4;
+		delete $5;
+		delete $7;
 	}
 	| IF LPAREN expression RPAREN statement %prec LOWER_THAN_ELSE
 	{
@@ -827,6 +882,8 @@ statement : var_declaration
 		$$ = new symbolInfo(code_segm, "statement");
 		$$->setType("statement");
 		writeToLog(code_segm, false);
+		delete $3;
+		delete $5;
 	}
 	| IF LPAREN expression RPAREN statement ELSE statement
 	{
@@ -842,6 +899,8 @@ statement : var_declaration
 		$$ = new symbolInfo(code_segm, "statement");
 		$$->setType("statement");
 		writeToLog(code_segm, false);
+
+		delete $5, $3, $7;
 	}
 	| WHILE LPAREN expression RPAREN statement
 	{
@@ -856,6 +915,9 @@ statement : var_declaration
 		$$ = new symbolInfo(code_segm, "statement");
 		$$->setType("statement");
 		writeToLog(code_segm, false);
+
+		delete $3;
+		delete $5;
 	}
 	| PRINTLN LPAREN ID RPAREN SEMICOLON
 	{
@@ -875,10 +937,12 @@ statement : var_declaration
 			err_segm = $3->getName() + " not a variable";
 			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
-		} 
+		}
 		$$ = new symbolInfo(code_segm, "statement");
 		$$->setType("statement");
 		writeToLog(code_segm, false);
+
+		delete $3;
 	}
 	| RETURN expression SEMICOLON
 	{
@@ -888,20 +952,25 @@ statement : var_declaration
 		$$ = new symbolInfo(code_segm, "statement");
 		$$->setType("statement");
 
-		if (voidFuncCall($2->getVarType()))
-		{
-			/* void function cannot be called in expression */
-			$2->setVarType("int"); // default type is int
-		}
-
 		if ($2->getVarType() != current_return_type)
 		{
 			SMNTC_ERR_COUNT++;
 			err_segm = "Type mismatch\n([return type] expected: " + current_return_type
 						+ " found: " + $2->getVarType() +")";
 			writeError(err_segm);
+			$2->setVarType(current_return_type);
 		}
+		else if (voidFuncCall($2->getVarType()))
+		{
+			/* void function cannot be called in expression */
+			$2->setVarType("int"); // default type is int
+		}
+
+
+		$$->setVarType($2->getVarType());
 		writeToLog(code_segm, false);
+
+		delete $2;
 	}
 	;
 
@@ -920,7 +989,7 @@ expression_statement : SEMICOLON
 	{
 		code_segm = $1->getName() + ";";
 		writeToLog("expression_statement : expression SEMICOLON");
-		// commented out because of input4 mismatch 
+		// commented out because of input4 mismatch
 		// if (voidFuncCall($1->getVarType()))
 		// {
 		// 	/* void function cannot be called in expression */
@@ -930,6 +999,7 @@ expression_statement : SEMICOLON
 		$$->setVarType($1->getVarType());
 		writeToLog(code_segm, false);
 
+		delete $1;
 	}
 	;
 
@@ -976,8 +1046,14 @@ error_expression : rel_expression error
 	}
 	| error
 	{
-		printf("single error detected\n");
+		// printf("single error detected\n");
 		$$ = new symbolInfo("", "error");
+	}
+	| type_specifier ID LPAREN RPAREN error
+	{
+		// printf("error function");
+		$$ = new symbolInfo("", "error");
+		yyclearin;
 	}
 	;
 
@@ -999,7 +1075,7 @@ variable : ID
 			err_segm = "Undeclared variable " + $$->getName();
 			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
-			$$->setVarType("int"); // assign the default type int
+			$$->setVarType("undec"); // assign the default type int
 		}
 
 		if (x != nullptr && (x->getArrSize()!=-1 || x->getIdType() == "array"))
@@ -1016,10 +1092,10 @@ variable : ID
 		code_segm = $1->getName() + "[" + $3->getName() + "]";
 		writeToLog("variable : ID LTHIRD expression RTHIRD");
 
-		symbolInfo *si = new symbolInfo(code_segm, "variable");
-		si->setIdType("array");
+		$$ = new symbolInfo(code_segm, "variable");
+		$$->setIdType("array");
 
-		//check if expression(index) is int
+		// check if expression(index) is int
 		if ($3->getVarType() != "int" || !isNumber($3->getName()))
 		{
 			SMNTC_ERR_COUNT++;
@@ -1030,37 +1106,39 @@ variable : ID
 		voidFuncCall($1->getVarType());
 
 		symbolInfo *sts = table->LookUpInAll($1->getName());
-		//printf("variable sts check  name == %s, size = %d type==%s\n", sts->getName().c_str(), sts->getArrSize(), sts->getIdType().c_str());
+
 		if (sts == nullptr) {
 			err_segm = "Undeclared variable " + $1->getName();
 			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
-			si->setArrSize(0);
-			si->setVarType("int");
+			$$->setArrSize(0);
+			$$->setVarType("undec");
 		}
 		else if (sts->getIdType() != "array" || sts->getArrSize() == -1) // checking if array or not
 		{
 			err_segm = "Type mismatch, " + sts->getName() + " is not an array";
 			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
-			si->setArrSize(0);
-			si->setVarType("int");
+			$$->setArrSize(0);
+			$$->setVarType(sts->getVarType());
 		}
 		else
 		{
-			si->setVarType(sts->getVarType());
+			$$->setVarType(sts->getVarType());
 			int index = ($3->getVarType()=="int")?atoi($3->getName().c_str()):0;
-			//printf("%s\n", $3->getVarType().c_str());
 			if (index>=sts->getArrSize() && $3->getVarType()=="int")
 			{
 				SMNTC_ERR_COUNT++;
 				writeError("Array index out of bound");
 			}
-			else si->arrIndex = index;
-			si->setArrSize(sts->getArrSize());
+			else $$->arrIndex = index;
+			$$->setArrSize(sts->getArrSize());
 		}
-		$$=si;
+
 		writeToLog(code_segm, false);
+
+		delete $1;
+		delete $3;
 	}
 	;
 
@@ -1079,13 +1157,13 @@ variable : ID
 		$$ = new symbolInfo(code_segm, "expression");
 		$$->setVarType($1->getVarType());
 
-		
+
 		if (voidFuncCall($3->getVarType()))
 		{
 			/* void function cannot be called in expression */
 			$3->setVarType("int");
 		}
-		else if ($1->getVarType() != $3->getVarType()) {
+		else if ($1->getVarType() != $3->getVarType() && $1->getVarType() != "undec") {
 			// checking if the operands on both sides have same type
 			// or if left operand has higher precedence than operand on right
 			if (!($1->getVarType() == "float" && $3->getVarType() != "void"))
@@ -1096,9 +1174,10 @@ variable : ID
 			}
 		}
 
-		
-
 		writeToLog(code_segm, false);
+
+		delete $1;
+		delete $3;
 	}
 	;
 
@@ -1119,15 +1198,18 @@ logic_expression : rel_expression
 		$$->setVarType("int");
 
 		/* void function cannot be called in expression */
-		voidFuncCall($1->getVarType());
-		voidFuncCall($3->getVarType());
+		bool isVoid = (voidFuncCall($1->getVarType()) | voidFuncCall($3->getVarType()));;
+
 		writeToLog(code_segm, false);
-		if ($1->getVarType() != "int" || $3->getVarType() != "int")
+		if (!isVoid && ($1->getVarType() != "int" || $3->getVarType() != "int" ))
 		{
 			SMNTC_ERR_COUNT++;
 			writeError("Non-Integer operand in relational operator");
 		}
 
+		delete $1;
+		delete $2;
+		delete $3;
 	}
 	;
 
@@ -1157,6 +1239,10 @@ rel_expression	: simple_expression
 		// 	fprintf(logFile, "Error at line %d : Non-Integer operand in RELOP operation\n\n", lineCnt);
 		// }
 		writeToLog(code_segm, false);
+
+		delete $1;
+		delete $2;
+		delete $3;
 	}
 	;
 
@@ -1184,6 +1270,10 @@ simple_expression : term
 			$$->setVarType("float");
 		}
 		writeToLog(code_segm, false);
+
+		delete $1;
+		delete $2;
+		delete $3;
 	}
 	;
 
@@ -1231,6 +1321,10 @@ term :	unary_expression
 		}
 
 		writeToLog(code_segm, false);
+
+		delete $1;
+		delete $2;
+		delete $3;
 	}
 	;
 
@@ -1249,6 +1343,9 @@ unary_expression : ADDOP unary_expression
 		}
 		$$=si;
 		writeToLog(code_segm, false);
+
+		delete $1;
+		delete $2;
 	}
 	| NOT unary_expression
 	{
@@ -1260,6 +1357,7 @@ unary_expression : ADDOP unary_expression
 		voidFuncCall($2->getVarType());
 		$$->setVarType("int");
 		writeToLog(code_segm, false);
+		delete $2;
 	}
 	| factor
 	{
@@ -1310,16 +1408,16 @@ factor	: variable
 			}
 			else if (x->getParamSize() != arg_vect.size())
 			{
-				for(int i=0;i<arg_vect.size();i++)
+				/* for(int i=0;i<arg_vect.size();i++)
 				{
 					printf("%s\n", arg_vect[i]->getName().c_str());
 				}
-				cout<<endl;
+				cout<<endl; */
 				// parameter size does not match
 				err_segm = "Total number of arguments mismatch in function " + x->getName();
 				writeError(err_segm);
 				SMNTC_ERR_COUNT++;
-				$$->setVarType("int");
+				$$->setVarType(x->getVarType());
 			}
 			else
 			{
@@ -1336,8 +1434,8 @@ factor	: variable
 							else if (i==1)err_segm+="nd";
 							else err_segm+="rd";
 						}
-						else err_segm+="th"; 
-						
+						else err_segm+="th";
+
 						err_segm += " argument mismatch in function " + x->getName();
 						err_segm += "\n(expected "+x->getParamAt(i)->param_type +", ";
 						err_segm += "found " + arg_vect[i]->getVarType() + ")";
@@ -1352,8 +1450,27 @@ factor	: variable
 			}
 
 		}
+		// if inside main, check whether this function has been properly defined
+		// and not only just declared
+		if (x!=nullptr && x->hasFuncPtr())
+		{
+			if (x->funcDeclNotDef() && insideMain)
+			{
+				err_segm = "Function declared but not defined";
+				writeError(err_segm);
+				SMNTC_ERR_COUNT++;
+			}
+		}
+
 		writeToLog(code_segm, false);
+		// for(int i=0;i<arg_vect.size();i++)
+		// {
+		// 	delete arg_vect[i];
+		// }
 		arg_vect.clear(); // clearing current argument vector
+
+		delete $1;
+		delete $3;
 	}
 	| LPAREN expression RPAREN
 	{
@@ -1363,6 +1480,7 @@ factor	: variable
 		writeToLog(code_segm, false);
 		$$ = new symbolInfo(code_segm, "factor");
 		$$->setVarType($2->getVarType());
+		delete $2;
 	}
 	| CONST_INT
 	{
@@ -1392,6 +1510,7 @@ factor	: variable
 		writeToLog("factor : variable INCOP"); writeToLog(code_segm, false);
 		$$ = new symbolInfo(code_segm, "factor");
 		$$->setVarType($1->getVarType()); /* type setting */
+		delete $1;
 	}
 	| variable DECOP
 	{
@@ -1399,6 +1518,7 @@ factor	: variable
 		writeToLog("factor : variable DECOP"); writeToLog(code_segm, false);
 		$$ = new symbolInfo(code_segm, "factor");
 		$$->setVarType($1->getVarType()); /* type setting */
+		delete $1;
 	}
 	;
 
@@ -1411,7 +1531,7 @@ argument_list : arguments
 	}
 	|
 	{
-		writeToLog("argument_list : <epsilon>");
+		writeToLog("argument_list : ");
 		writeToLog("", false);
 		$$ = new symbolInfo("", "argument_list");
 	}
@@ -1429,6 +1549,7 @@ arguments : arguments COMMA logic_expression
 		$$->setVarType($1->getVarType());
 		writeToLog(code_segm, false);
 		arg_vect.push_back($3); // arg_vect used to keep track of arguments
+		delete $1;
 	}
 	| logic_expression
 	{
