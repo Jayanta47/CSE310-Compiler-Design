@@ -377,6 +377,13 @@ void yyerror(char *s)
 	fprintf(errorFile, "Error at Line %d: %s\n\n", lineCnt, s);
 }
 
+void optimizer(string code)
+{
+	
+}
+
+
+
 
 %}
 
@@ -451,7 +458,9 @@ start : program
 			// printing procedure code
 			// the value to be printed is stored in printData variable
 			oss<<"PRINTF PROC"<<endl;
+			oss<<"\tPOP address"<<endl;
 			oss<<"\tPOP printData"<<endl;
+			oss<<"\tPUSH address"<<endl;
 			oss<<"\tPUSH AX"<<endl;
 			oss<<"\tPUSH BX"<<endl;
 			oss<<"\tPUSH CX"<<endl;
@@ -1063,11 +1072,6 @@ statements : statement
 		delete $1;
 		delete $2;
 	}
-	/* | statements error_statement
-	{
-		fprintf(logFile, "%s\n\n", $1->getName().c_str());
-		printf("Converging into statements\n");
-	} */
 	;
 
 statement : var_declaration
@@ -1117,6 +1121,40 @@ statement : var_declaration
 		$$ = new symbolInfo(code_segm, "statement");
 		$$->setType("statement");
 		writeToLog(code_segm, false);
+
+		/* Assembly code */
+		/* when both expression statements are not blank statements */
+		if ($3->getSymbol() != ";" && $4->getSymbol() != ";")
+		{
+			string label1 = newLabel();
+			string label2 = newLabel();
+
+			/* EXPRESSION_STATEMENT_1 CODE (INITIALIZATION)
+			LABEL1:
+			EXPRESSION_STATEMENT_2 CODE (CONDITION FORMATION)
+			MOV AX, EXPRESSION_STATEMENT_2
+			CMP AX, 0
+			JE LABEL2 (EXIT LOOP IF EXPR-2 IS 0)
+			STATEMENT CODE
+			EXPRESSION CODE
+			JMP LABEL1
+			LABEL2:  */
+
+			std::ostringstream oss;
+			oss<<$3->getCode();
+			oss<<"\t"<<label1<<":"<<endl;
+			oss<<$4->getCode();
+			oss<<"\tMOV AX, "<<$4->getSymbol()<<endl;
+			oss<<"\tCMP AX, 0"<<endl;
+			oss<<"\tJE "<<label2<<endl;
+			oss<<$7->getCode();
+			oss<<$5->getCode();
+			oss<<"\tJMP "<<label1<<endl;
+			oss<<"\t"<<label2<<":"<<endl;
+
+			$$->setCode(oss.str());
+
+		}
 
 		delete $3;
 		delete $4;
@@ -1219,10 +1257,23 @@ statement : var_declaration
 		std::ostringstream oss;
 
 		oss<<"\t"<<label1<<":"<<endl;
-		oss<<$3->getCode();
-		oss<<"\tMOV AX, "<<$3->getSymbol()<<endl;
-		oss<<"\tCMP AX, 0"<<endl;
-		oss<<"\tJE "<<label2<<endl;
+		if ($3->laterEval == true)
+		{
+			/* oss<<$3->getCode(); */
+			oss<<"\tMOV AX, "<<$3->getSymbol()<<endl;
+			oss<<"\tCMP AX, 0"<<endl;
+			oss<<"\tJE "<<label2<<endl;
+			oss<<$3->getCode();
+		}
+		else
+		{
+			oss<<$3->getCode();
+			oss<<"\tMOV AX, "<<$3->getSymbol()<<endl;
+			oss<<"\tCMP AX, 0"<<endl;
+			oss<<"\tJE "<<label2<<endl;
+		}
+
+
 		oss<<$5->getCode();
 		oss<<"\tJMP "<<label1<<endl;
 		oss<<label2<<":"<<endl;
@@ -2196,27 +2247,28 @@ factor	: variable
 		$$->setVarType($1->getVarType()); /* type setting */
 
 		// temporary variable to hold factor data
-		std::string tempVar = newTemp("factor");
-		initVarSet.insert(tempVar);
+		/* std::string tempVar = newTemp("factor");
+		initVarSet.insert(tempVar); */
 		std::ostringstream oss;
 		if($1->getIdType() == "array")
 		{
 			oss<<$1->getCode();
 			oss<<"\tINC "<<$1->getSymbol()<<"[BX]"<<endl;
-			oss<<"\tMOV AX, "<<$1->getSymbol()<<"[BX]"<<endl;
-			oss<<"\tMOV "<<tempVar<<", AX"<<endl;
+			/* oss<<"\tMOV AX, "<<$1->getSymbol()<<"[BX]"<<endl;
+			oss<<"\tMOV "<<tempVar<<", AX"<<endl; */
 		}
 		else
 		{
 			// variable not array
 			oss<<$1->getCode();
 			oss<<"\tINC "<<$1->getSymbol()<<endl;
-			oss<<"\tMOV AX, "<<$1->getSymbol()<<endl;
-			oss<<"\tMOV "<<tempVar<<", AX"<<endl;
+			/* oss<<"\tMOV AX, "<<$1->getSymbol()<<endl;
+			oss<<"\tMOV "<<tempVar<<", AX"<<endl; */
 		}
 		assmCode = oss.str();
 		$$->setCode(assmCode);
-		$$->setSymbol(tempVar);
+		$$->setSymbol($1->getSymbol());
+		$$->laterEval = true;
 		delete $1;
 	}
 	| variable DECOP
@@ -2228,26 +2280,27 @@ factor	: variable
 		$$->setVarType($1->getVarType()); /* type setting */
 
 		// temporary variable to hold factor data
-		std::string tempVar = newTemp("factor");
-		initVarSet.insert(tempVar);
+		/* std::string tempVar = newTemp("factor");
+		initVarSet.insert(tempVar); */
 		std::ostringstream oss;
 		if($1->getIdType() == "array")
 		{
 			oss<<$1->getCode();
 			oss<<"\tDEC "<<$1->getSymbol()<<"[BX]"<<endl;
-			oss<<"\tMOV AX, "<<$1->getSymbol()<<"[BX]"<<endl;
-			oss<<"\tMOV "<<tempVar<<", AX"<<endl;
+			/* oss<<"\tMOV AX, "<<$1->getSymbol()<<"[BX]"<<endl;
+			oss<<"\tMOV "<<tempVar<<", AX"<<endl; */
 		}
 		else
 		{
 			oss<<$1->getCode();
-			oss<<"\tINC "<<$1->getSymbol()<<endl;
-			oss<<"\tMOV AX, "<<$1->getSymbol()<<endl;
-			oss<<"\tMOV "<<tempVar<<", AX"<<endl;
+			oss<<"\tDEC "<<$1->getSymbol()<<endl;
+			/* oss<<"\tMOV AX, "<<$1->getSymbol()<<endl;
+			oss<<"\tMOV "<<tempVar<<", AX"<<endl; */
 		}
 		assmCode = oss.str();
 		$$->setCode(assmCode);
-		$$->setSymbol(tempVar);
+		$$->setSymbol($1->getSymbol());
+		$$->laterEval = true;
 
 		delete $1;
 	}

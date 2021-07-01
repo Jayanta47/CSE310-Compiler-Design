@@ -6,4 +6,4 @@ g++ -w -c -o l.o lex.yy.c
 echo "lex file compiled and output created"
 echo "Creating linker"
 g++ ./y.o ./l.o -lfl 
-./a.out recurse1.c log2.txt code_uno2.asm error2.txt
+
