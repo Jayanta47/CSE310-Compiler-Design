@@ -451,6 +451,7 @@ start : program
 			// printing procedure code
 			// the value to be printed is stored in printData variable
 			oss<<"PRINTF PROC"<<endl;
+			oss<<"\tPOP printData"<<endl;
 			oss<<"\tPUSH AX"<<endl;
 			oss<<"\tPUSH BX"<<endl;
 			oss<<"\tPUSH CX"<<endl;
@@ -1288,11 +1289,11 @@ statement : var_declaration
 		// CALL PRINTLN
 		if (is_valid)
 		{
-			string tempVar = "printData";
+			/* string tempVar = "printData"; */
 			/* initVarSet.insert(tempVar); */
 			std::ostringstream oss;
 			oss<<"\tMOV AX, "<<x->getSymbol()<<endl;
-			oss<<"\tMOV "<<tempVar<<", AX"<<endl;
+			oss<<"\tPUSH AX"<<endl;
 			oss<<"\tCALL PRINTF"<<endl; // the value stored in 'printData' has to be shown
 			assmCode = oss.str();
 			$$->setCode(assmCode);
@@ -1458,6 +1459,7 @@ variable : ID
 			$$->setArrSize(sts->getArrSize());
 			$$->setSymbol(sts->getSymbol());
 		}
+		/* Setting index beforehand into BX, accessed when used */
 		$$->setCode($3->getCode() + "\tMOV BX, " + $3->getSymbol()+"\n\t" +
 					"ADD BX,BX\n");
 		writeToLog(code_segm, false);
@@ -1489,7 +1491,6 @@ variable : ID
 		if ($1->getVarType() != $3->getVarType()) {
 			if (!($1->getVarType() == "float" && $3->getVarType() != "void"))
 			{
-				//printf("%s type=%s, %s type=%s\n",$1->getName().c_str(), $1->getVarType().c_str(), $3->getName().c_str(), $3->getVarType().c_str());
 				writeError("Type mismatch");
 				SMNTC_ERR_COUNT++;
 				is_valid = false;

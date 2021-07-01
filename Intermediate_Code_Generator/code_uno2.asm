@@ -67,12 +67,13 @@ MAIN PROC
 	MOV AX, tmpfactor1_2
 	MOV tmpa1_2, AX
 	MOV AX, tmpa1_2
-	MOV printData, AX
+	PUSH AX
 	CALL PRINTF
 
 	MOV AH, 4CH
 	INT 21H
 PRINTF PROC
+	POP printData
 	PUSH AX
 	PUSH BX
 	PUSH CX
