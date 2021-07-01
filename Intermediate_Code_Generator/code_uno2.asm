@@ -31,6 +31,7 @@ sum PROC
 	CMP AX, 0
 	JE LB2
 	PUSH 0
+	JMP @RETURN
 	LB2:
 	MOV AX, tmpn1_1
 	SUB AX, 1
@@ -48,6 +49,8 @@ sum PROC
 	ADD AX, tmpfactor1_1
 	MOV tmpsimple_expr1_1, AX
 	PUSH tmpsimple_expr1_1
+	JMP @RETURN
+	@RETURN:
 	PUSH address
 	RET
 sum ENDP

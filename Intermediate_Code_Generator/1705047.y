@@ -614,6 +614,7 @@ func_definition : func_definition_initP compound_statement
 					oss<<"\tPOP "<<recieveArg_list[i]<<endl;
 				}
 				oss<<$2->getCode();
+				oss<<"\t@RETURN:"<<endl;
 				oss<<"\tPUSH address"<<endl;
 				oss<<"\tRET"<<endl;
 				oss<<curr_func_name<<" ENDP"<<endl;
@@ -1333,7 +1334,8 @@ statement : var_declaration
 
 		if(is_valid)
 		{
-			$$->setCode($2->getCode() + "\tPUSH " + $2->getSymbol() + "\n");
+			$$->setCode($2->getCode() + "\tPUSH " + $2->getSymbol() + "\n"+
+			"\tJMP @RETURN\n");
 			// return statement would be given in procedure
 		}
 		delete $2;
@@ -1374,53 +1376,6 @@ expression_statement : SEMICOLON
 	}
 	;
 
-/* error_expression : rel_expression error
-	{
-		// printf("rel_expression_error : rel_expression error => %s error\n", $1->getName().c_str());
-		//yyclearin; // clears the stack pointer
-		yyerrok; // permission to call error
-		symbolInfo *si = new symbolInfo(
-			$1->getName(),
-			"error_expression"
-		);
-		$$=si;
-	}
-	| variable ASSIGNOP logic_expression error
-	{
-		printf("variable ASSIGNOP logic_expression_error\n");
-		printf("%s = %s\n", $1->getName().c_str(), $3->getName().c_str());
-		$$ = new symbolInfo("" , "expression");
-		//yyclearin;
-		yyerrok;
-	}
-	| simple_expression ADDOP error
-	{
-		printf("error_expression : simple_expression ADDOP error\n");
-		yyclearin; // clears the stack pointer
-		yyerrok; // permission to call error
-		symbolInfo *si = new symbolInfo(
-			$1->getName(),
-			"error_expression"
-		);
-		$$=si;
-	}
-	| simple_expression RELOP error
-	{
-		printf("error_expression : simple_expression RELOP error\n");
-		//yyclearin; // clears the stack pointer
-		yyerrok; // permission to call error
-		symbolInfo *si = new symbolInfo(
-			$1->getName(),
-			"error_expression"
-		);
-		$$=si;
-	}
-	| error
-	{
-		printf("single error detected");
-		$$ = new symbolInfo("", "error");
-	}
-	; */
 
 
 variable : ID
