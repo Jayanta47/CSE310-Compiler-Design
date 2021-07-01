@@ -5,78 +5,67 @@
 .DATA
 	NL EQU 0AH
 	CR EQU 0DH
-	tmpa1_1 DW ?
 	tmpa1_2 DW ?
-	tmpa1_3 DW ?
-	tmpb1_2 DW ?
-	tmpb1_3 DW ?
+	tmpfactor1_1 DW ?
 	tmpfactor1_2 DW ?
-	tmpfactor1_3 DW ?
-	tmpsimple_expr1_2 DW ?
-	tmpterm1_1 DW ?
-	tmpx1_2 DW ?
+	tmpn1_1 DW ?
+	tmprel_expr1_1 DW ?
+	tmpsimple_expr1_1 DW ?
 	address DW ?
 	printData DW 0
 .CODE 
-f PROC
+sum PROC
 	POP address
-	POP tmpa1_1
-	MOV AX, 2
-	MOV BX, tmpa1_1
-	IMUL BX
-	MOV tmpterm1_1, AX
-	PUSH tmpterm1_1
-	MOV AX, 9
-	MOV tmpa1_1, AX
-	PUSH address
-	RET
-f ENDP
-g PROC
-	POP address
-	POP tmpb1_2
-	POP tmpa1_2
+	POP tmpn1_1
+	MOV AX, tmpn1_1
+	CMP AX, 0
+	JE LB0
+	MOV AX, 0
+	MOV tmprel_expr1_1, AX
+	JMP LB1
+	LB0:
+	MOV AX, 1
+	MOV tmprel_expr1_1, AX
+	LB1:
+	MOV AX, tmprel_expr1_1
+	CMP AX, 0
+	JE LB2
+	PUSH 0
+	LB2:
+	MOV AX, tmpn1_1
+	SUB AX, 1
+	MOV tmpsimple_expr1_1, AX
 	PUSH AX
 	PUSH BX
 	PUSH address
-	PUSH tmpa1_2
-	CALL f
-	POP tmpfactor1_2
+	PUSH tmpsimple_expr1_1
+	CALL sum
+	POP tmpfactor1_1
 	POP address
 	POP BX
 	POP AX
-	MOV AX, tmpfactor1_2
-	ADD AX, tmpa1_2
-	MOV tmpsimple_expr1_2, AX
-	MOV AX, tmpsimple_expr1_2
-	ADD AX, tmpb1_2
-	MOV tmpsimple_expr1_2, AX
-	MOV AX, tmpsimple_expr1_2
-	MOV tmpx1_2, AX
-	PUSH tmpx1_2
+	MOV AX, tmpn1_1
+	ADD AX, tmpfactor1_1
+	MOV tmpsimple_expr1_1, AX
+	PUSH tmpsimple_expr1_1
 	PUSH address
 	RET
-g ENDP
+sum ENDP
 MAIN PROC
 	MOV AX, @DATA
 	MOV DS, AX
-	MOV AX, 1
-	MOV tmpa1_3, AX
-	MOV AX, 2
-	MOV tmpb1_3, AX
 	PUSH AX
 	PUSH BX
-	PUSH tmpa1_3
-	PUSH tmpb1_3
-	CALL g
-	POP tmpfactor1_3
+	PUSH 5
+	CALL sum
+	POP tmpfactor1_2
 	POP BX
 	POP AX
-	MOV AX, tmpfactor1_3
-	MOV tmpa1_3, AX
-	MOV AX, tmpa1_3
+	MOV AX, tmpfactor1_2
+	MOV tmpa1_2, AX
+	MOV AX, tmpa1_2
 	MOV printData, AX
 	CALL PRINTF
-	PUSH 0
 
 	MOV AH, 4CH
 	INT 21H

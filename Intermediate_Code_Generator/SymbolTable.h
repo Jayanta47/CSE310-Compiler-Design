@@ -29,7 +29,8 @@ class symbolInfo
     symbolInfo *prev;
 
     std::string code; // new addition
-    std::string symbol;
+    std::string symbol; // represents the variable/ symbol that this unit
+    // of code represents
 public:
     int arrIndex = 0;
     symbolInfo()
@@ -61,7 +62,7 @@ public:
     ~symbolInfo()
     {
         if (this->next != nullptr)
-        {       
+        {
             this->next = nullptr;
         }
         if (this->prev != nullptr)
@@ -277,7 +278,7 @@ public:
             {
                 this->index = index;
                 this->pos = pos;
-                
+
                 return symPtr;
             }
             pos++;
@@ -318,7 +319,7 @@ public:
         fprintf(file, "%s\n", msg.c_str());
         for (int i = 0; i < this->n_buckets; i++)
         {
-            
+
             if (this->bucket[i] != nullptr)
             {
                 fprintf(file, " %d --> ", i);
@@ -330,7 +331,7 @@ public:
                 }
                 fprintf(file, "\n");
             }
-            
+
 
         }
         fprintf(file, "\n");

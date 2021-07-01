@@ -1,4 +1,4 @@
-inf f(int a){
+int f(int a){
     return 2*a;
     a=9;
 }
@@ -13,7 +13,7 @@ int main(){
     int a,b;
     a=1;
     b=2;
-    a=f(a,b);
-    println(a);
+    a=g(a,b);
+    printf(a);
     return 0;
 }
