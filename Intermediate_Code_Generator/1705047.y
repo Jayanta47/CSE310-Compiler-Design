@@ -377,9 +377,92 @@ void yyerror(char *s)
 	fprintf(errorFile, "Error at Line %d: %s\n\n", lineCnt, s);
 }
 
-void optimizer(string code)
+string strip(string line)
 {
-	
+    if(line[0]=='\t')
+    {
+        line = line.substr(1, line.size()-1);
+    }
+    return line;
+}
+
+
+vector<string> *split(string x, char delim = ' ', bool changeComma= false)
+{
+    x += delim; //includes a delimiter at the end so last word is also read
+    vector<string> *splitted = new vector<string>;
+    string temp = "";
+    for (int i = 0; i < x.length(); i++)
+    {
+        if (x[i] == delim)
+        {
+            if (changeComma && temp[temp.size()-1]==',')
+            {
+                temp = temp.substr(0, temp.size()-1);
+            }
+            splitted->push_back(temp);
+            temp = "";
+        }
+        else {
+            temp += x[i];
+        }
+
+    }
+    return splitted;
+}
+
+
+
+void optimizer(vector<string> *initCode)
+{
+	vector<string>* line1;
+	vector<string>* line2;
+	vector<int> lines2Delete;
+
+	vector<string> *codes = new vector<string>;
+	for (int lineNo = 0;lineNo<initCode->size();lineNo++)
+	{
+		string line = initCode->at(lineNo);
+		line = strip(line);
+		codes->push_back(line);
+	}
+
+	line1 = split(codes->at(0), ' ', true);
+
+	for(int lineNo = 1; lineNo<codes->size(); lineNo++)
+	{
+		line2 = split(codes->at(lineNo), ' ', true);
+		if (line2->at(0) == "PRINTF")
+		{
+			break;
+		}
+		if (line1->at(0)=="MOV" && line2->at(0)=="MOV")
+    {
+        if (line1->at(1) == line2->at(2) && line1->at(2)==line2->at(1))
+        {
+						printf("problem at %d", lineNo);
+						lines2Delete.push_back(lineNo);
+        }
+    }
+		//printf("%s\n", line1->at(0).c_str());
+		delete line1;
+		line1 = line2;
+
+	}
+	printf("finished");
+	for (int i = lines2Delete.size()-1;i>=0;i--)
+  {
+      initCode->erase(initCode->begin()+lines2Delete.at(i));
+  }
+
+	for (int line = 0; line<initCode->size(); line++)
+	{
+		fprintf(optimized_code, "%s\n", initCode->at(line).c_str());
+	}
+
+	delete codes;
+	delete initCode;
+
 }
 
 
@@ -428,8 +511,8 @@ start : program
 		if (SMNTC_ERR_COUNT + ERR_COUNT == 0) // only create the assembly code if there are no errors
 		{
 			std::ostringstream oss;
-			oss<<".MODEL SMALL"<<endl<<endl;
-			oss<<".STACK 100H"<<endl<<endl;
+			oss<<".MODEL SMALL"<<endl;
+			oss<<".STACK 100H"<<endl;
 			oss<<".DATA"<<endl;
 
 			oss<<"\tNL EQU 0AH"<<endl;
@@ -454,6 +537,8 @@ start : program
 			// code segment
 			oss<<".CODE "<<endl;
 			oss<<$1->getCode();
+			/* oss<<"MOV AX, ABCD"<<endl;
+			oss<<"MOV ABCD, AX"<<endl; */
 
 			// printing procedure code
 			// the value to be printed is stored in printData variable
@@ -505,6 +590,8 @@ start : program
 			assmCode = oss.str();
 			//printf("%s", assmCode.c_str());
 			fprintf(codeFile, "%s", assmCode.c_str());
+			vector<string> *codes = split(assmCode, '\n');
+			optimizer(codes);
 		}
 	}
 	;
@@ -2387,6 +2474,8 @@ int main(int argc,char *argv[])
 	logFile = fopen(argv[2],"w");
 	codeFile = fopen(argv[3], "w");
 	errorFile = fopen(argv[4],"w");
+	optimized_code = fopen(argv[5], "w");
+
 	// checking if logfile and error files are properly working
 	if (logFile == nullptr)
 	{
@@ -2403,6 +2492,13 @@ int main(int argc,char *argv[])
 	}
 
 	if (errorFile == nullptr)
+	{
+		printf("Error File not properly opened\nTerminating program...\n");
+		fclose(errorFile);
+		exit(1);
+	}
+
+	if (optimized_code == nullptr)
 	{
 		printf("Error File not properly opened\nTerminating program...\n");
 		fclose(errorFile);
@@ -2427,6 +2523,7 @@ int main(int argc,char *argv[])
 	fclose(logFile);
 	fclose(codeFile);
 	fclose(errorFile);
+	fclose(optimized_code);
 
 	return 0;
 }
