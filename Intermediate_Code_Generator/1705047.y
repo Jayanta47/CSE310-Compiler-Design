@@ -1,5 +1,6 @@
 %{
 // Created by: Jayanta Sadhu
+// Intermediate Code Generation
 #include<iostream>
 #include<sstream>
 #include<cstdlib>
@@ -90,6 +91,7 @@ std::string return_type;
 std::string current_return_type;
 bool insideMain = false; // true if inside main function
 bool is_func_valid;
+int recursiveCallCtr;
 
 vector<string> recieveArg_list;  // arguments to be recieved by a function
 
@@ -443,13 +445,14 @@ void optimizer(vector<string> *initCode)
 						printf("problem at %d", lineNo);
 						lines2Delete.push_back(lineNo);
         }
+				printf("\n");
     }
-		//printf("%s\n", line1->at(0).c_str());
+
 		delete line1;
 		line1 = line2;
 
 	}
-	printf("finished");
+	printf("finished\n");
 	for (int i = lines2Delete.size()-1;i>=0;i--)
   {
       initCode->erase(initCode->begin()+lines2Delete.at(i));
@@ -720,6 +723,8 @@ func_definition : func_definition_initP compound_statement
 		}
 		$$->setCode(oss.str());
 		recieveArg_list.clear();
+		recursiveCallCtr = 0;
+
 		delete $1;
 		delete $2;
 	}
@@ -766,6 +771,8 @@ func_definition : func_definition_initP compound_statement
 			is_func_valid = false;
 		}
 		$$->setCode(oss.str());
+		recieveArg_list.clear();
+		recursiveCallCtr = 0;
 
 		delete $1;
 		delete $2;
@@ -785,6 +792,7 @@ func_definition_initP : type_specifier ID LPAREN parameter_list RPAREN
 		$$->setVarType($1->getName());
 		current_return_type = $1->getName();
 		curr_func_name = $2->getName();
+		recursiveCallCtr = 0;
 
 		delete $1;
 		delete $2;
@@ -804,6 +812,8 @@ func_definition_init : type_specifier ID LPAREN RPAREN
 		$$->setVarType($1->getName());
 		current_return_type = $1->getName();
 		curr_func_name = $2->getName();
+		recursiveCallCtr = 0;
+
 		delete $1;
 		delete $2;
 	};
@@ -2140,7 +2150,7 @@ factor	: variable
 	}
 	| ID LPAREN argument_list RPAREN
 	{
-		printf("check arg_vect , size = %d\n", arg_vect.size());
+		/* printf("check arg_vect , size = %d\n", arg_vect.size()); */
 		for(int i = 0; i<arg_vect.size();i++)
 		{
 			printf("name=%s, type=%s\n", arg_vect[i]->getName().c_str(),arg_vect[i]->getVarType().c_str());
@@ -2243,9 +2253,35 @@ factor	: variable
 		if (valid_call)
 		{
 			std::string tempVar = newTemp("factor");
+			std::string receiveVar = "";
 			initVarSet.insert(tempVar);
 			std::ostringstream oss;
 			oss<<$3->getCode();
+
+			bool isRecursive = false;
+			if (curr_func_name == x->getName())
+			{
+				isRecursive = true;
+			}
+			if (isRecursive)
+			{
+				printf("recursive call of %s\n", curr_func_name.c_str());
+				recursiveCallCtr++;
+				if (recursiveCallCtr>1)
+				{
+					std::ostringstream i2s;
+					i2s<<recursiveCallCtr;
+					std::string rval = i2s.str();
+					receiveVar = newTemp("retVal_"+rval+"_");
+					initVarSet.insert(receiveVar);
+				}
+				/* save present parameters before calling function */
+				for(int i=0;i<recieveArg_list.size();i++)
+				{
+					printf("%s\n", recieveArg_list[i].c_str());
+					oss<<"\tPUSH "<<recieveArg_list[i]<<endl;
+				}
+			}
 			oss<<"\tPUSH AX"<<endl<<"\tPUSH BX"<<endl;
 
 			if (!insideMain) {
@@ -2264,7 +2300,17 @@ factor	: variable
 				if (x->getFunctionInfo()->returnType != "void")
 				{
 					// if return type is not void, save that to a variable from stack
-					oss<<"\tPOP "<<tempVar<<endl;
+					/* if multiple recursive calls occur, then return value is stored
+					into a returnVal variable, else the the tempVar will hold the
+					return value of a recursive call */
+					if (isRecursive && recursiveCallCtr>1)
+					{
+						oss<<"\tPOP "<<receiveVar<<endl;
+					}
+					else
+					{
+						oss<<"\tPOP "<<tempVar<<endl;
+					}
 				}
 			}
 
@@ -2274,10 +2320,27 @@ factor	: variable
 
 			// releasing the registers
 			oss<<"\tPOP BX"<<endl<<"\tPOP AX"<<endl;
+			if (curr_func_name == x->getName())
+			{
+				printf("recursive call of %s\n", curr_func_name.c_str());
+				/* save present parameters before calling function */
+				for(int i=0;i<recieveArg_list.size();i++)
+				{
+					/* printf("%s\n", recieveArg_list[i].c_str()); */
+					oss<<"\tPOP "<<recieveArg_list[i]<<endl;
+				}
+			}
 			assmCode = oss.str();
 			oss.str("");
 			$$->setCode(assmCode);
-			$$->setSymbol(tempVar);
+			if (isRecursive & recursiveCallCtr>1)
+			{
+				$$->setSymbol(receiveVar);
+			}
+			else
+			{
+				$$->setSymbol(tempVar);
+			}
 		}
 
 		arg_vect.clear(); // clearing current argument vector
