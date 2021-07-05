@@ -54,9 +54,6 @@ factorial PROC
 	PUSH tmpterm1_1_2
 	JMP @RETURN
 	LB3:
-	@RETURN:
-	PUSH address
-	RET
 factorial ENDP
 MAIN PROC
 	MOV AX, @DATA
@@ -134,8 +131,12 @@ MAIN PROC
 	PUSH AX
 	CALL PRINTF
 
+	@EXITLABEL:
 	MOV AH, 4CH
 	INT 21H
+	@RETURN:
+	PUSH address
+	RET
 PRINTF PROC
 	POP address
 	POP printData

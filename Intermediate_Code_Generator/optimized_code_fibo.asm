@@ -8,6 +8,7 @@
 	tmpfactor1_2 DW ?
 	tmpn1_1 DW ?
 	tmprel_expr1_1 DW ?
+	tmprel_expr21_1 DW ?
 	tmpretVal_2_1_1 DW ?
 	tmpsimple_expr1_1 DW ?
 	address DW ?
@@ -17,8 +18,8 @@ fibo PROC
 	POP address
 	POP tmpn1_1
 	MOV AX, tmpn1_1
-	CMP AX, 2
-	JE LB0
+	CMP AX, 0
+	JLE LB0
 	MOV AX, 0
 	MOV tmprel_expr1_1, AX
 	JMP LB1
@@ -29,23 +30,23 @@ fibo PROC
 	MOV AX, tmprel_expr1_1
 	CMP AX, 0
 	JE LB2
-	PUSH 1
+	PUSH 0
 	JMP @RETURN
 	LB2:
 	MOV AX, tmpn1_1
 	CMP AX, 1
-	JLE LB3
+	JE LB3
 	MOV AX, 0
-	MOV tmprel_expr1_1, AX
+	MOV tmprel_expr21_1, AX
 	JMP LB4
 	LB3:
 	MOV AX, 1
-	MOV tmprel_expr1_1, AX
+	MOV tmprel_expr21_1, AX
 	LB4:
-	MOV AX, tmprel_expr1_1
+	MOV AX, tmprel_expr21_1
 	CMP AX, 0
 	JE LB5
-	PUSH 0
+	PUSH 1
 	JMP @RETURN
 	LB5:
 	MOV AX, tmpn1_1
@@ -65,6 +66,7 @@ fibo PROC
 	MOV AX, tmpn1_1
 	SUB AX, 2
 	MOV tmpsimple_expr1_1, AX
+	PUSH tmpfactor1_1
 	PUSH tmpn1_1
 	PUSH AX
 	PUSH BX
@@ -76,18 +78,27 @@ fibo PROC
 	POP BX
 	POP AX
 	POP tmpn1_1
+	POP tmpfactor1_1
 	MOV AX, tmpfactor1_1
 	ADD AX, tmpretVal_2_1_1
 	MOV tmpsimple_expr1_1, AX
 	PUSH tmpsimple_expr1_1
 	JMP @RETURN
-	@RETURN:
-	PUSH address
-	RET
 fibo ENDP
 MAIN PROC
 	MOV AX, @DATA
 	MOV DS, AX
+	PUSH AX
+	PUSH BX
+	PUSH 0
+	CALL fibo
+	POP tmpfactor1_2
+	POP BX
+	POP AX
+	MOV AX, tmpfactor1_2
+	MOV tmpa1_2, AX
+	PUSH AX
+	CALL PRINTF
 	PUSH AX
 	PUSH BX
 	PUSH 1
@@ -112,6 +123,17 @@ MAIN PROC
 	CALL PRINTF
 	PUSH AX
 	PUSH BX
+	PUSH 5
+	CALL fibo
+	POP tmpfactor1_2
+	POP BX
+	POP AX
+	MOV AX, tmpfactor1_2
+	MOV tmpa1_2, AX
+	PUSH AX
+	CALL PRINTF
+	PUSH AX
+	PUSH BX
 	PUSH 6
 	CALL fibo
 	POP tmpfactor1_2
@@ -123,7 +145,7 @@ MAIN PROC
 	CALL PRINTF
 	PUSH AX
 	PUSH BX
-	PUSH 5
+	PUSH 8
 	CALL fibo
 	POP tmpfactor1_2
 	POP BX
@@ -133,8 +155,12 @@ MAIN PROC
 	PUSH AX
 	CALL PRINTF
 
+	@EXITLABEL:
 	MOV AH, 4CH
 	INT 21H
+	@RETURN:
+	PUSH address
+	RET
 PRINTF PROC
 	POP address
 	POP printData

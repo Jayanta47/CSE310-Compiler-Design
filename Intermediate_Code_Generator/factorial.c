@@ -1,6 +1,6 @@
 int factorial(int n)
 {
-	if (n<=1) 
+	if (n<=1)
 	{
 		return 1;
 	}
@@ -13,18 +13,17 @@ int factorial(int n)
 int main()
 {
 	int a;
-	a = factorial(1);
+	a = factorial(1); // 1
 	printf(a);
-	a = factorial(2);
+	a = factorial(2); // 2
 	printf(a);
-	a = factorial(4);
+	a = factorial(4); // 24
 	printf(a);
-	a = factorial(5);
+	a = factorial(5); // 120
 	printf(a);
-	a = factorial(6);
+	a = factorial(6); // 720
 	printf(a);
-	a = factorial(7);
+	a = factorial(7); // 5040
 	printf(a);
 
 }
-

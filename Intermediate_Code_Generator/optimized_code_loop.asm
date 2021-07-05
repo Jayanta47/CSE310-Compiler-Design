@@ -6,7 +6,11 @@
 	tmpa1_1 DW ?
 	tmpb1_1 DW ?
 	tmpi1_1 DW ?
+	tmpj1_1 DW ?
 	tmprel_expr1_1 DW ?
+	tmprel_expr1_1_2 DW ?
+	tmprel_expr21_1 DW ?
+	tmpterm1_1_2_1 DW ?
 	address DW ?
 	printData DW 0
 .CODE 
@@ -36,10 +40,12 @@ MAIN PROC
 	LB2:
 	MOV AX, tmpa1_1
 	CMP AX, 0
-	JE LB3
+	JE @EXITCOND
 	DEC tmpa1_1
 	INC tmpb1_1
 	JMP LB2
+	@EXITCOND:
+	DEC tmpa1_1
 LB3:
 	INC tmpi1_1
 	JMP LB4
@@ -53,10 +59,58 @@ LB3:
 	MOV AX, tmpi1_1
 	PUSH AX
 	CALL PRINTF
+	MOV AX, 1
+	MOV tmpi1_1, AX
+	LB12:
+	MOV AX, tmpi1_1
+	CMP AX, 4
+	JLE LB6
+	MOV AX, 0
+	MOV tmprel_expr21_1, AX
+	JMP LB7
+	LB6:
+	MOV AX, 1
+	MOV tmprel_expr21_1, AX
+	LB7:
+	MOV AX, tmprel_expr21_1
+	CMP AX, 0
+	JE LB13
+	MOV AX, 1
+	MOV tmpj1_1, AX
+	LB10:
+	MOV AX, tmpj1_1
+	CMP AX, 4
+	JLE LB8
+	MOV AX, 0
+	MOV tmprel_expr1_1_2, AX
+	JMP LB9
+	LB8:
+	MOV AX, 1
+	MOV tmprel_expr1_1_2, AX
+	LB9:
+	MOV AX, tmprel_expr1_1_2
+	CMP AX, 0
+	JE LB11
+	MOV AX, tmpi1_1
+	MOV BX, tmpj1_1
+	IMUL BX
+	MOV tmpterm1_1_2_1, AX
+	MOV tmpa1_1, AX
+	PUSH AX
+	CALL PRINTF
+	INC tmpj1_1
+	JMP LB10
+	LB11:
+	INC tmpi1_1
+	JMP LB12
+	LB13:
 
+	@EXITLABEL:
 	MOV AH, 4CH
 	INT 21H
-MOV AX, ABCD
+	@RETURN:
+	PUSH address
+	RET
 PRINTF PROC
 	POP address
 	POP printData

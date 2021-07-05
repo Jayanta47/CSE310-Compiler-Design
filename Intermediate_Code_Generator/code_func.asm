@@ -27,9 +27,6 @@ f PROC
 	JMP @RETURN
 	MOV AX, 9
 	MOV tmpa1_1, AX
-	@RETURN:
-	PUSH address
-	RET
 f ENDP
 g PROC
 	POP address
@@ -54,9 +51,6 @@ g PROC
 	MOV tmpx1_2, AX
 	PUSH tmpx1_2
 	JMP @RETURN
-	@RETURN:
-	PUSH address
-	RET
 g ENDP
 MAIN PROC
 	MOV AX, @DATA
@@ -78,11 +72,14 @@ MAIN PROC
 	MOV AX, tmpa1_3
 	PUSH AX
 	CALL PRINTF
-	PUSH 0
-	JMP @RETURN
+	JMP @EXITLABEL
 
+	@EXITLABEL:
 	MOV AH, 4CH
 	INT 21H
+	@RETURN:
+	PUSH address
+	RET
 PRINTF PROC
 	POP address
 	POP printData

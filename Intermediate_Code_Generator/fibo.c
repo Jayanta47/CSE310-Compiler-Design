@@ -1,12 +1,12 @@
 int fibo(int n)
 {
-	if (n==2)
-	{
-		return 1;
-	}
-	if (n<=1)
+	if (n<=0)
 	{
 		return 0;
+	}
+	if (n==1)
+	{
+		return 1;
 	}
 	return fibo(n-1)+fibo(n-2);
 }
@@ -14,14 +14,16 @@ int fibo(int n)
 void main()
 {
 	int a;
-	a = fibo(1);
+	a = fibo(0); // 0
 	printf(a);
-	a = fibo(2);
+	a = fibo(1); // 1
 	printf(a);
-	a = fibo(6);
+	a = fibo(2); // 1
 	printf(a);
-	a = fibo(5);
+	a = fibo(5); // 5
+	printf(a);
+	a = fibo(6); // 8
+	printf(a);
+	a = fibo(8); // 21
 	printf(a);
 }
-
-

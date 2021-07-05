@@ -91,7 +91,24 @@ std::string return_type;
 std::string current_return_type;
 bool insideMain = false; // true if inside main function
 bool is_func_valid;
+
+/* keeping count of recursive calls within a function
+need to know how many variables should be declared
+in recursive function call  */
 int recursiveCallCtr;
+
+/* Two production rules use same type of expressions
+on both sides of a operand:
+	logic_expression: rel_expression LOGICOP rel_expression
+	rel_expression: simple_expression RELOP simple_expression */
+
+/* For that a count is necessary to know if new
+variables are needed to be declared  */
+int relExprCtr;
+
+/* vector container needed to hold the state variables
+(that may vary) during a recursive call  */
+vector<string> functionStateVars;
 
 vector<string> recieveArg_list;  // arguments to be recieved by a function
 
@@ -177,7 +194,7 @@ void insertVarIntoTable(std::string varType, variableInfo *vp)
 	symbolInfo *si = new symbolInfo(vp->var_name, "ID");
 
 	si->setVarType(varType);
-	printf("variable name: %s, type: %s\n", si->getName().c_str(), si->getVarType().c_str());
+	/* printf("variable name: %s, type: %s\n", si->getName().c_str(), si->getVarType().c_str()); */
 	int varSize = atoi(vp->var_size.c_str());
 	//printf("Insertion func, array size = %d\n", varSize);
 	si->setArrSize(varSize);
@@ -442,17 +459,17 @@ void optimizer(vector<string> *initCode)
     {
         if (line1->at(1) == line2->at(2) && line1->at(2)==line2->at(1))
         {
-						printf("problem at %d", lineNo);
+						/* printf("problem at %d", lineNo); */
 						lines2Delete.push_back(lineNo);
         }
-				printf("\n");
+				/* printf("\n"); */
     }
 
 		delete line1;
 		line1 = line2;
 
 	}
-	printf("finished\n");
+	/* printf("finished\n"); */
 	for (int i = lines2Delete.size()-1;i>=0;i--)
   {
       initCode->erase(initCode->begin()+lines2Delete.at(i));
@@ -545,6 +562,10 @@ start : program
 
 			// printing procedure code
 			// the value to be printed is stored in printData variable
+
+			oss<<"\t@RETURN:"<<endl;
+			oss<<"\tPUSH address"<<endl;
+			oss<<"\tRET"<<endl;
 			oss<<"PRINTF PROC"<<endl;
 			oss<<"\tPOP address"<<endl;
 			oss<<"\tPOP printData"<<endl;
@@ -701,6 +722,7 @@ func_definition : func_definition_initP compound_statement
 				oss<<$2->getCode();
 				// exit DOS
 				oss<<endl;
+				oss<<"\t@EXITLABEL:"<<endl;
 				oss<<"\tMOV AH, 4CH"<<endl;
 				oss<<"\tINT 21H"<<endl;
 				oss<<"\tMAIN ENDP"<<endl;
@@ -714,9 +736,7 @@ func_definition : func_definition_initP compound_statement
 					oss<<"\tPOP "<<recieveArg_list[i]<<endl;
 				}
 				oss<<$2->getCode();
-				oss<<"\t@RETURN:"<<endl;
-				oss<<"\tPUSH address"<<endl;
-				oss<<"\tRET"<<endl;
+
 				oss<<curr_func_name<<" ENDP"<<endl;
 			}
 			is_func_valid = false;
@@ -724,6 +744,8 @@ func_definition : func_definition_initP compound_statement
 		$$->setCode(oss.str());
 		recieveArg_list.clear();
 		recursiveCallCtr = 0;
+		relExprCtr = 0;
+		functionStateVars.clear();
 
 		delete $1;
 		delete $2;
@@ -752,6 +774,7 @@ func_definition : func_definition_initP compound_statement
 				oss<<$2->getCode();
 				// exit DOS
 				oss<<endl;
+				oss<<"\t@EXITLABEL:"<<endl;
 				oss<<"\tMOV AH, 4CH"<<endl;
 				oss<<"\tINT 21H"<<endl;
 			}
@@ -773,6 +796,8 @@ func_definition : func_definition_initP compound_statement
 		$$->setCode(oss.str());
 		recieveArg_list.clear();
 		recursiveCallCtr = 0;
+		relExprCtr = 0;
+		functionStateVars.clear();
 
 		delete $1;
 		delete $2;
@@ -793,6 +818,8 @@ func_definition_initP : type_specifier ID LPAREN parameter_list RPAREN
 		current_return_type = $1->getName();
 		curr_func_name = $2->getName();
 		recursiveCallCtr = 0;
+		relExprCtr = 0;
+		functionStateVars.clear();
 
 		delete $1;
 		delete $2;
@@ -813,6 +840,8 @@ func_definition_init : type_specifier ID LPAREN RPAREN
 		current_return_type = $1->getName();
 		curr_func_name = $2->getName();
 		recursiveCallCtr = 0;
+		relExprCtr = 0;
+		functionStateVars.clear();
 
 		delete $1;
 		delete $2;
@@ -1359,7 +1388,7 @@ statement : var_declaration
 			/* oss<<$3->getCode(); */
 			oss<<"\tMOV AX, "<<$3->getSymbol()<<endl;
 			oss<<"\tCMP AX, 0"<<endl;
-			oss<<"\tJE "<<label2<<endl;
+			oss<<"\tJE @EXITCOND"<<endl;
 			oss<<$3->getCode();
 		}
 		else
@@ -1373,6 +1402,11 @@ statement : var_declaration
 
 		oss<<$5->getCode();
 		oss<<"\tJMP "<<label1<<endl;
+		if ($3->laterEval == true)
+		{
+			oss<<"\t@EXITCOND:"<<endl;
+			oss<<$3->getCode();
+		}
 		oss<<label2<<":"<<endl;
 
 		assmCode = oss.str();
@@ -1386,6 +1420,8 @@ statement : var_declaration
 		code_segm = "println("+$3->getName()+")"+";";
 		writeToLog("statement : PRINTLN LPAREN ID RPAREN SEMICOLON");
 
+		bool is_valid = true;
+
 		// check if the declared ID is declared or not
 		symbolInfo *x = table->LookUpInAll($3->getName());
 		if (x == nullptr)
@@ -1393,23 +1429,40 @@ statement : var_declaration
 			err_segm = "Undeclared variable " + $3->getName();
 			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
+			is_valid = false;
 		}
 		else if (x->getIdType() != "variable")
 		{
 			err_segm = $3->getName() + " not a variable";
 			writeError(err_segm);
 			SMNTC_ERR_COUNT++;
+			is_valid = false;
 		}
 		$$ = new symbolInfo(code_segm, "statement");
 		$$->setType("statement");
 		writeToLog(code_segm, false);
+
+		// after println, a specific procedure is called for the purpose of displaying argument
+		// SAVE 'ID' DATA TO PRINT VARIABLE
+		// CALL PRINTLN
+		if (is_valid)
+		{
+			/* string tempVar = "printData"; */
+			/* initVarSet.insert(tempVar); */
+			std::ostringstream oss;
+			oss<<"\tMOV AX, "<<x->getSymbol()<<endl;
+			oss<<"\tPUSH AX"<<endl;
+			oss<<"\tCALL PRINTF"<<endl; // the value stored in 'printData' has to be shown
+			assmCode = oss.str();
+			$$->setCode(assmCode);
+		}
 
 		delete $3;
 	}
 	| PRINTF LPAREN ID RPAREN SEMICOLON
 	{
 		code_segm = "printf("+$3->getName()+")"+";";
-		// writeToLog("statement : PRINTF LPAREN ID RPAREN SEMICOLON");
+		writeToLog("statement : PRINTF LPAREN ID RPAREN SEMICOLON");
 		bool is_valid = true;
 
 		// check if the declared ID is declared or not
@@ -1446,7 +1499,7 @@ statement : var_declaration
 			assmCode = oss.str();
 			$$->setCode(assmCode);
 		}
-		// delete $3;
+		delete $3;
 
 	}
 	| RETURN expression SEMICOLON
@@ -1481,11 +1534,14 @@ statement : var_declaration
 		}
 		writeToLog(code_segm, false);
 
-		if(is_valid)
+		if(curr_func_name != "main")
 		{
 			$$->setCode($2->getCode() + "\tPUSH " + $2->getSymbol() + "\n"+
 			"\tJMP @RETURN\n");
-			// return statement would be given in procedure
+		}
+		else
+		{
+			$$->setCode($2->getCode() + "\tJMP @EXITLABEL\n");
 		}
 		delete $2;
 	}
@@ -1618,11 +1674,19 @@ variable : ID
 	;
 
 
- expression : logic_expression
+expression : logic_expression
 	{
 		writeToLog("expression : logic_expression");
 		writeToLog($1->getName(), false);
 		$$=$1;
+		/* string tempVar = newTemp("expr");
+		initVarSet.insert(tempVar);
+		std::ostringstream oss;
+		oss<<$1->getCode();
+		oss<<"\tMOV AX, "<<$1->getSymbol()<<endl;
+		oss<<"\tMOV "<<tempVar<<", AX"<<endl;
+		$$->setCode(oss.str());
+		$$->setSymbol(tempVar); */
 		$$->setType("expression");
 	}
 	| variable ASSIGNOP logic_expression
@@ -1716,6 +1780,7 @@ logic_expression : rel_expression
 
 		if (is_valid)
 		{
+
 			string tempVar = newTemp("logic_expr");
 			initVarSet.insert(tempVar);
 			std::ostringstream oss;
@@ -1739,11 +1804,11 @@ logic_expression : rel_expression
 
 			// || OPERATION
 			// MOV AX, REL_EXPR1
-			// CMP AX, 1
-			// JE LABEL1
+			// CMP AX, 0
+			// JNE LABEL1
 			// MOV AX, REL_EXPR2
-			// CMP AX, 1
-			// JE LABEL1
+			// CMP AX, 0
+			// JNE LABEL1
 			// MOV AX, 0
 			// MOV TEMPVAR, AX
 			// JMP LABEL2
@@ -1771,8 +1836,8 @@ logic_expression : rel_expression
 			else
 			{
 				oss<<"\tMOV AX, "<<$1->getSymbol()<<endl;
-				oss<<"\tCMP AX, 1"<<endl;
-				oss<<"\tJE "<<label1<<endl;
+				oss<<"\tCMP AX, 0"<<endl;
+				oss<<"\tJNE "<<label1<<endl;
 				oss<<"\tMOV AX, "<<$3->getSymbol()<<endl;
 				oss<<"\tCMP AX, 1"<<endl;
 				oss<<"\tJE "<<label1<<endl;
@@ -1821,7 +1886,17 @@ rel_expression	: simple_expression
 		if (is_valid)
 		{
 			// RELOP includes <. <=, >, >=, ==
-			string tempVar = newTemp("rel_expr");
+			string tempVar = "";
+			if (relExprCtr%2==0)
+			{
+				tempVar = newTemp("rel_expr");
+			}
+			else
+			{
+				tempVar = newTemp("rel_expr2");
+			}
+			relExprCtr++;
+
 			std::ostringstream oss;
 			initVarSet.insert(tempVar);
 			// add the previous code to string stream
@@ -1885,7 +1960,6 @@ rel_expression	: simple_expression
 		delete $3;
 	}
 	;
-
 
 simple_expression : term
 	{
@@ -2151,10 +2225,10 @@ factor	: variable
 	| ID LPAREN argument_list RPAREN
 	{
 		/* printf("check arg_vect , size = %d\n", arg_vect.size()); */
-		for(int i = 0; i<arg_vect.size();i++)
+		/* for(int i = 0; i<arg_vect.size();i++)
 		{
-			printf("name=%s, type=%s\n", arg_vect[i]->getName().c_str(),arg_vect[i]->getVarType().c_str());
-		}
+			//printf("name=%s, type=%s\n", arg_vect[i]->getName().c_str(),arg_vect[i]->getVarType().c_str());
+		} */
 		code_segm = $1->getName() + "(" + $3->getName() + ")";
 		writeToLog("factor : ID LPAREN argument_list RPAREN");
 
@@ -2202,14 +2276,14 @@ factor	: variable
 			{
 				// check every parameter type
 				int i;
-				printf("arg_vect size = %d\n", arg_vect.size());
+				// printf("arg_vect size = %d\n", arg_vect.size());
 				for(i = 0; i<arg_vect.size();i++)
 				{
-					printf("name=%s, type=%s\n", arg_vect[i]->getName().c_str(),arg_vect[i]->getVarType().c_str());
+					// printf("name=%s, type=%s\n", arg_vect[i]->getName().c_str(),arg_vect[i]->getVarType().c_str());
 				}
 				for(i = 0; i<arg_vect.size();i++)
 				{
-					printf("arg type-> %s\n", arg_vect[i]->getVarType().c_str());
+					// printf("arg type-> %s\n", arg_vect[i]->getVarType().c_str());
 					if (x->getParamAt(i)->param_type != arg_vect[i]->getVarType())
 					{
 						err_segm = (i+'1');
@@ -2265,20 +2339,26 @@ factor	: variable
 			}
 			if (isRecursive)
 			{
-				printf("recursive call of %s\n", curr_func_name.c_str());
+				// printf("recursive call of %s\n", curr_func_name.c_str());
 				recursiveCallCtr++;
 				if (recursiveCallCtr>1)
 				{
+					if (recursiveCallCtr==2)functionStateVars.push_back(tempVar);
 					std::ostringstream i2s;
 					i2s<<recursiveCallCtr;
 					std::string rval = i2s.str();
 					receiveVar = newTemp("retVal_"+rval+"_");
 					initVarSet.insert(receiveVar);
+					functionStateVars.push_back(receiveVar);
+					for (int i = 0; i < functionStateVars.size()-1; i++)
+					{
+						oss<<"\tPUSH "<<functionStateVars[i]<<endl;
+					}
 				}
 				/* save present parameters before calling function */
 				for(int i=0;i<recieveArg_list.size();i++)
 				{
-					printf("%s\n", recieveArg_list[i].c_str());
+					/* printf("%s\n", recieveArg_list[i].c_str()); */
 					oss<<"\tPUSH "<<recieveArg_list[i]<<endl;
 				}
 			}
@@ -2320,16 +2400,26 @@ factor	: variable
 
 			// releasing the registers
 			oss<<"\tPOP BX"<<endl<<"\tPOP AX"<<endl;
-			if (curr_func_name == x->getName())
+			if (isRecursive)
 			{
-				printf("recursive call of %s\n", curr_func_name.c_str());
+				/* printf("recursive call of %s\n", curr_func_name.c_str()); */
 				/* save present parameters before calling function */
 				for(int i=0;i<recieveArg_list.size();i++)
 				{
 					/* printf("%s\n", recieveArg_list[i].c_str()); */
 					oss<<"\tPOP "<<recieveArg_list[i]<<endl;
 				}
+
 			}
+
+			if (isRecursive & recursiveCallCtr>1)
+			{
+					for(int i = functionStateVars.size()-2;i>=0;i--)
+					{
+						oss<<"\tPOP "<<functionStateVars[i]<<endl;
+					}
+			}
+
 			assmCode = oss.str();
 			oss.str("");
 			$$->setCode(assmCode);
@@ -2482,7 +2572,7 @@ arguments : arguments COMMA logic_expression
 		}
 		$$->setVarType($1->getVarType());
 		writeToLog(code_segm, false);
-		printf("entering arg:- %s,  type->%s\n", $3->getName().c_str(), $3->getVarType().c_str());
+		/* printf("entering arg:- %s,  type->%s\n", $3->getName().c_str(), $3->getVarType().c_str()); */
 		arg_vect.push_back($3); // arg_vect used to keep track of arguments
 		//printf("arg_vect-> %s", arg_vect[1]->getVarType().c_str());
 		// carry code forward
@@ -2508,7 +2598,7 @@ arguments : arguments COMMA logic_expression
 		$$->setCode($1->getCode());
 
 		arg_vect.push_back($1); // arg_vect used to keep track of arguments
-		printf("entering arg:- %s,  type->%s\n", $1->getName().c_str(), $1->getVarType().c_str());
+		/* printf("entering arg:- %s,  type->%s\n", $1->getName().c_str(), $1->getVarType().c_str()); */
 		recordOnStk_list.push_back($1->getSymbol()); // temp_list
 		/* delete $1; */
 	}
