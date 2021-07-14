@@ -30,8 +30,9 @@ class symbolInfo
 
     std::string code; // new addition
     std::string symbol; // represents the variable/ symbol that this unit
-    // of code represents
+                        // of code represents
 public:
+    bool laterEval = false; // for knowing if an expression is to be later evaluated
     int arrIndex = 0;
     symbolInfo()
     {

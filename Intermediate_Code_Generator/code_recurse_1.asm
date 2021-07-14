@@ -1,7 +1,5 @@
 .MODEL SMALL
-
 .STACK 100H
-
 .DATA
 	NL EQU 0AH
 	CR EQU 0DH
@@ -36,6 +34,7 @@ sum PROC
 	MOV AX, tmpn1_1
 	SUB AX, 1
 	MOV tmpsimple_expr1_1, AX
+	PUSH tmpn1_1
 	PUSH AX
 	PUSH BX
 	PUSH address
@@ -45,6 +44,7 @@ sum PROC
 	POP address
 	POP BX
 	POP AX
+POP tmpn1_1
 	MOV AX, tmpn1_1
 	ADD AX, tmpfactor1_1
 	MOV tmpsimple_expr1_1, AX
@@ -73,7 +73,9 @@ MAIN PROC
 	MOV AH, 4CH
 	INT 21H
 PRINTF PROC
+	POP address
 	POP printData
+	PUSH address
 	PUSH AX
 	PUSH BX
 	PUSH CX
